@@ -44,7 +44,7 @@ function mapEnv(cfg, value) {
   }
 }
 
-function mapValidation(cfg, value) { return null }
+function mapValidation(cfg, value) {  throw new NotImplementedError() }
 
 const DEFAULT_MAPPING = [mapDefaultValues, mapEnv];
 
