@@ -19,7 +19,7 @@ const configTree0 = {
 
 test('null map returns keys only', t => {
   assert.deepEqual(
-    appy.resolveConfig(configTree0, [appy.mapNull]),
+    appy.resolveConfig(configTree0, appy.mapNull),
     {
       key1: {
         key1a: null
@@ -29,9 +29,9 @@ test('null map returns keys only', t => {
 })
 
 // test default values
-test('defaults map assigns value to keys', t => {
+test('mapDefaultValues assigns value to keys', t => {
   assert.deepEqual(
-    appy.resolveConfig(configTree0, [appy.mapDefaultValues]),
+    appy.resolveConfig(configTree0, appy.mapDefaultValues),
     {
       key1: {
         key1a: "value1a"
@@ -49,11 +49,11 @@ const configTree1 = {
 }
 
 // test environment variables
-test('assigns environment variables to keys', t => {
+test('mapEnv assigns environment variables to keys', t => {
   process.env.APPY_TEST_ENV1 = "Environment Value 1";
   process.env.APPY_TEST_ENV2 = "Environment Value 2";
   assert.deepEqual(
-    appy.resolveConfig(configTree1, [appy.mapEnv]),
+    appy.resolveConfig(configTree1, appy.mapEnv),
     {
       root_variable1: "Environment Value 1",
       app: {
@@ -65,21 +65,35 @@ test('assigns environment variables to keys', t => {
 })
 
 const configTree2 = {
-  authorize: {
-    client: {
-      id: ["<client-id>", "APP_CLIENT_ID"],
-      secret: ["<client-secret>", "APP_CLIENT_SECRET"],
-    },
-    auth: {
-      tokenHost: ["https://api.oauth.com", "APP_AUTH_TOKENHOST"],
-    }  
-  },
+  rootVariable1: [null, "APPY_TEST_ENV_NULL"],
+  rootVariable2: [null, "APPY_TEST_ENV_STRING"],
+  rootVariable3: ["Root 3 default value", "APPY_TEST_ENV_NULL"],
+  rootVariable4: ["Root 4 default value", "APPY_TEST_ENV_STRING"],
   app: {
-    hostname: ["localhost", "APP_HOSTNAME"],
-    authorizeCallback: ["<authorize callback url>", "APP_AUTHORIZE_CALLBACK_URL"],
-    tokenCallback: ["<token callback url>", "APP_TOKEN_CALLBACK_URL"],
-    oauthScope: ["meeting:write", "APP_OAUTH_SCOPE"],
+    appVariable5: [null, "APPY_TEST_ENV_NULL"],
+    appVariable6: [null, "APPY_TEST_ENV_STRING"],
+    appVariable7: ["Appvar 7 default value", "APPY_TEST_ENV_NULL"],
+    appVariable8: ["Appvar 8 default value", "APPY_TEST_ENV_STRING"],
   }
 }
 
 // test environment overrides default values
+test('second mapping overrides first mapping', t => {
+  assert.equal(process.env.APPY_TEST_ENV_NULL, undefined);
+  process.env.APPY_TEST_ENV_STRING = "Environment Value String";
+  assert.deepEqual(
+    appy.resolveConfig(configTree2, [appy.mapDefaultValues, appy.mapEnv]),
+    {
+      rootVariable1: null,
+      rootVariable2: "Environment Value String",
+      rootVariable3: "Root 3 default value",
+      rootVariable4: "Environment Value String",
+      app: {
+        appVariable5: null,
+        appVariable6: "Environment Value String",
+        appVariable7: "Appvar 7 default value",
+        appVariable8: "Environment Value String",
+      }
+    }
+  )
+})
