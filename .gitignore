@@ -1,0 +1,9 @@
+# dependencies
+node_modules/
+
+# temp files
+*~
+*.bak
+
+# misc
+.DS_Store

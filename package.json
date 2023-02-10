@@ -1,0 +1,24 @@
+{
+  "name": "appyconfig",
+  "version": "0.0.1",
+  "description": "Read application configuration data from different sources in a unified way.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/tests.js"
+  },
+  "keywords": [
+    "app",
+    "config",
+    "env",
+    "cli",
+    "jsonc"
+  ],
+  "author": "Brian D. Wong",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "dependencies": {
+    "test": "^3.3.0"
+  }
+}
