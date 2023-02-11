@@ -11,8 +11,7 @@ Dealing with configuration settings
 
 ```js
 // Your lib/config.js
-const { resolveConfig, mapDefaults, mapCmdArgs, mapEnv, mapValidation,
-  stringType, booleanType, intType // example types for validation
+const { resolveConfig, mapDefaultValues, mapCmdArgs, mapEnv,
  } = require('appconfig');
 
 
@@ -57,30 +56,18 @@ const config_tree = {
   }
 }
 
-// Default argument for mapping: [map_defaults, map_config_file, map_cmd_args, map_env, map_validation]
-// However we can choose to map what we want. In particular, if there is no array, it's a single mapping.
-const config = resolve_config(config_tree, [map_defaults, map_env]);
+// We can choose to map options from different sources. In particular, if there is no array, it's a single mapping.
 
+```
+const config = resolve_config(config_tree, [map_defaults, map_env]);
+```
 module.exports = config;
 ```
 
 
 ## Commander
-For Commander, utilize the preAction hook to grab global command line options as in the following code:
 
-```js
-const { Command } = require('commander');
-const util = require('util');
-
-const program = new Command();
-
-program.hook('preAction', (thisCommand, actionCommand) => {
-   console.log('Hello world!')
-   console.log(util.inspect(thisCommand.opts()));
-   console.log(util.inspect(actionCommand.opts()));
-})
-
-```
+For Commander, appyconfig utilizes the preAction hook to grab global command line options.
 
 This means the `Command` instance must be passed to `resolveCommander()` so that the hook can be installed. Command-line options will be extracted when the 'preAction' hook is executed (i.e. before actions are run).
 
@@ -88,6 +75,10 @@ In your `lib/config`
 
 ```js
 const { resolveConfig } = require('appyconfig');
+
+const config = resolve_config(config_tree, [mapDefaultValues, mapEnv, mapCommander]);
+
+module.exports = config;
 
 ```
 
@@ -101,4 +92,7 @@ const config = require('lib/config');
 const program = new Command();
 resolveCommander(program);
 
+// ...
+
+program.parse(process.argv);
 ```

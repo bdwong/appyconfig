@@ -97,3 +97,12 @@ test('second mapping overrides first mapping', t => {
     }
   )
 })
+
+// Is this necessary?
+test('mapCommanderArgs throws error if called before resolveConfig', t => {
+
+})
+
+test('mapCommanderArgs maps command line option to value.', t => {
+
+})
