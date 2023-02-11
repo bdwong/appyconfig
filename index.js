@@ -4,11 +4,6 @@ const stringType = new Object(),
   booleanType = new Object(),
   intType = new Object();
 
-// Module globals. If we need multiple instances there would be a ConfigResolver.
-let g_resolveMaps = [];
-let g_configTree = {};
-let g_valueTree = null;
-
 class NotImplementedError extends Error {}
 
 /**
@@ -34,32 +29,6 @@ function mapDefaultValues(cfg, _value) { return cfg }
 function mapCmdArgs(_cfg, value) {
   return value;
 }
-
-/**
- * @description If an appropriate hook has been added to a Commander instance,
- *    find the option in program.opts or program.args.
- * @param {*} command - the Commander program or subcommand that has parsed options.
- * @param {*} cfg - the name of the option to look up.
- * @param {*} value - current value of the value tree
- * @returns the value of the selected command line option
- */
-function mapCommanderArgs(command, cfg, value) {
-  if (g_valueTree == null) { // This should never happen.
-    throw new Error(
-      "mapCommanderArgs() called during config resolver stage.\n" +
-      "Do not specify mapCommanderArgs in the config tree directly."
-    );
-  }
-
-  if (command.args(cfg)) {
-    return command.args(cfg);
-  } else if (command.opts(cfg)) {
-    return command.opts(cfg);
-  } else {
-    return value;
-  }
-}
-
 
 /**
  * @description If the environment variable cfg exists, then use its value,
@@ -98,68 +67,109 @@ function visitTree([configBranch, valueBranch, index], taskFn) {
   return valueBranch;
 }
 
+
 /**
- * @description Gathers app configuration from various sources and
- *    presents them as a single hash.
- * @param {*} configTree 
- * @param {*} resolveMaps 
- * @returns configuration values resolved from different sources.
+ * Class to encapsulate the configuration resolution logic for easier testing.
  */
-function resolveConfig(configTree, resolveMaps = DEFAULT_MAPPING) {
-  let valueTree = {};
-  if (!Array.isArray(resolveMaps)) {
-    resolveMaps = [resolveMaps]
+class ConfigResolver {
+  constructor() {
+    this.resolveMaps = [];
+    this.configTree = {};
+    this.valueTree = null;
   }
-  // Save the resolve maps so we can reference them for command line parsing.
-  g_resolveMaps = resolveMaps;
-  g_configTree = configTree;
-
-  valueTree = resolveMaps.reduce(function(innerValueTree, mapping, index){
-    innerValueTree = visitTree([configTree, innerValueTree, index], mapping);
-    return innerValueTree;
-  }, valueTree);
-
-  g_valueTree = valueTree;
-  return valueTree;
-}
-
-function resolveCommander(commandInstance) {
-  commandInstance.hook('preAction', (thisCommand, actionCommand) => {
-    // There are two possible scenarios when the hook is called.
-    // 1) The config is already resolved, minus the command line options.
-    //    - get the existing config tree and value tree and resolve immediately.
-    // 2) The config has not yet been resolved.
-    //    - We cannot continue because we don't have access to the config tree.
-    //    - TODO: Implement ConfigResolver and require it call to resolveCommander().
-
-    if (g_resolveMaps.indexOf(mapCmdArgs) === -1) {
+  
+  /**
+   * @description If an appropriate hook has been added to a Commander instance,
+   *    find the option in program.opts or program.args.
+   * @param {*} command - the Commander program or subcommand that has parsed options.
+   * @param {*} cfg - the name of the option to look up.
+   * @param {*} value - current value of the value tree
+   * @returns the value of the selected command line option
+   */
+  mapCommanderArgs(command, cfg, value) {
+    if (this.valueTree == null) { // This should never happen.
       throw new Error(
-        "mapCmdArgs was not found in the configuration resolver order.\n" +
-        "Require or import your config.js before calling resolveCommander()."
+        "mapCommanderArgs() called during config resolver stage.\n" +
+        "Do not specify mapCommanderArgs in the config tree directly."
       );
     }
 
-    if (g_valueTree === null) {
-      throw new Error("resolveCommander() was called before resolveConfig().");
+    if (command.args(cfg)) {
+      return command.args(cfg);
+    } else if (command.opts(cfg)) {
+      return command.opts(cfg);
+    } else {
+      return value;
     }
+  }
 
-    // Going forward, config has already been resolved.
-    let index = g_resolveMaps.indexOf(mapCmdArgs);
-    if (index === -1) {
-      // Cannot continue without access to the config elements for mapCmdArgs.
-      throw new Error("mapCmdArgs was not found in the configuration resolver order.");
+  /**
+   * @description Gathers app configuration from various sources and
+   *    presents them as a single hash.
+   * @param {*} configTree 
+   * @param {*} resolveMaps 
+   * @returns configuration values resolved from different sources.
+   */
+  resolveConfig(configTree, resolveMaps = DEFAULT_MAPPING) {
+    let valueTree = {};
+    if (!Array.isArray(resolveMaps)) {
+      resolveMaps = [resolveMaps]
     }
+    // Save the resolve maps so we can reference them for command line parsing.
+    this.resolveMaps = resolveMaps;
+    this.configTree = configTree;
 
-    g_valueTree = visitTree(
-      [configTree, g_valueTree, index],
-      // Partial application of function mapCommanderArgs in place of mapCmdArgs,
-      // to pass in actionCommand for opts and args.
-      mapCommanderArgs.bind(null, actionCommand)
-    );
- })
+    valueTree = resolveMaps.reduce( (innerValueTree, mapping, index) => {
+      innerValueTree = visitTree([configTree, innerValueTree, index], mapping);
+      return innerValueTree;
+    }, valueTree);
+
+    this.valueTree = valueTree;
+    return valueTree;
+  }
+
+  resolveCommander(commandInstance) {
+    commandInstance.hook('preAction', (thisCommand, actionCommand) => {
+      // There are two possible scenarios when the hook is called.
+      // 1) The config is already resolved, minus the command line options.
+      //    - get the existing config tree and value tree and resolve immediately.
+      // 2) The config has not yet been resolved.
+      //    - We cannot continue because we don't have access to the config tree.
+      //    - TODO: Implement ConfigResolver and require it call to resolveCommander().
+
+      if (this.resolveMaps.indexOf(mapCmdArgs) === -1) {
+        throw new Error(
+          "mapCmdArgs was not found in the configuration resolver order.\n" +
+          "Require or import your config.js before calling resolveCommander()."
+        );
+      }
+
+      if (this.valueTree === null) {
+        throw new Error("resolveCommander() was called before resolveConfig().");
+      }
+
+      // Going forward, config has already been resolved.
+      let index = this.resolveMaps.indexOf(mapCmdArgs);
+      if (index === -1) {
+        // Cannot continue without access to the config elements for mapCmdArgs.
+        throw new Error("mapCmdArgs was not found in the configuration resolver order.");
+      }
+
+      this.valueTree = this.visitTree(
+        [configTree, this.valueTree, index],
+        // Partial application of function mapCommanderArgs in place of mapCmdArgs,
+        // to pass in actionCommand for opts and args.
+        mapCommanderArgs.bind(this, actionCommand)
+      );
+    })
+  }
 }
 
+let g_configResolver = new ConfigResolver();
+
 module.exports = {
-  resolveConfig, mapDefaultValues, mapCmdArgs, mapEnv, mapValidation, mapNull,
+  resolveConfig: g_configResolver.resolveConfig,
+  resolveCommander: g_configResolver.resolveCommander,
+  mapDefaultValues, mapCmdArgs, mapEnv, mapValidation, mapNull,
   stringType, booleanType, intType
 }
