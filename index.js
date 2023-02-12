@@ -137,29 +137,21 @@ class ConfigResolver {
       //    - We cannot continue because we don't have access to the config tree.
       //    - TODO: Implement ConfigResolver and require it call to resolveCommander().
 
-      if (this.resolveMaps.indexOf(mapCmdArgs) === -1) {
-        throw new Error(
-          "mapCmdArgs was not found in the configuration resolver order.\n" +
-          "Require or import your config.js before calling resolveCommander()."
-        );
-      }
-
       if (this.valueTree === null) {
         throw new Error("resolveCommander() was called before resolveConfig().");
       }
 
-      // Going forward, config has already been resolved.
       let index = this.resolveMaps.indexOf(mapCmdArgs);
       if (index === -1) {
         // Cannot continue without access to the config elements for mapCmdArgs.
         throw new Error("mapCmdArgs was not found in the configuration resolver order.");
       }
 
-      this.valueTree = this.visitTree(
-        [configTree, this.valueTree, index],
+      this.valueTree = visitTree(
+        [this.configTree, this.valueTree, index],
         // Partial application of function mapCommanderArgs in place of mapCmdArgs,
         // to pass in actionCommand for opts and args.
-        mapCommanderArgs.bind(this, actionCommand)
+        this.mapCommanderArgs.bind(this, actionCommand)
       );
     })
   }

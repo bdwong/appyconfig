@@ -60,7 +60,7 @@ test('mapEnv assigns environment variables to keys', t => {
       app: {
         variable2: "Environment Value 2",
         variable3: undefined
-      }  
+      }
     }
   )
 })
@@ -102,12 +102,13 @@ test('second mapping overrides first mapping', t => {
 test.describe('ConfigResolver', async() => {
   let resolver = null;
   let commandCallback;
+  const cmdOpts = {opt1: "optvalue1", opt2: "optvalue2"};
   let commandMock = {
     hook: mock.fn((_hook, callback) => {
       commandCallback = callback;
     }),
-    args: (_name) => (''),
-    opts: (_name) => ('')
+    args: (name) => (cmdOpts[name]),
+    opts: (name) => (cmdOpts[name])
   };
 
   beforeEach(() => {
@@ -116,16 +117,58 @@ test.describe('ConfigResolver', async() => {
     commandCallback = null;
   })
 
-  it('throws an error if mapCommanderArgs called before resolveConfig', () => {
-    console.log(`resolver(2): ${util.inspect(resolver)}`);
-    assert.throws(() => {
+  describe('mapCommanderArgs', () => {
+    it('throws an error if called before resolveConfig', () => {
+      console.log(`resolver(2): ${util.inspect(resolver)}`);
+      assert.throws(() => {
+        resolver.resolveCommander(commandMock);
+        // Manually trigger the command callback.
+        commandCallback(commandMock, commandMock);
+      }, /resolveCommander.. was called before resolveConfig../);
+    })
+
+    const configTree3 = {
+      key1: {
+        key1a: ["value1a", "opt1"]
+      },
+      key2: ["value2", "opt2"]
+    }
+
+
+    it('throws an error if mapCmdArgs is not in the resolveMaps array', () => {
+      console.log(`resolver(3): ${util.inspect(resolver)}`);
+      resolver.resolveConfig(configTree3, [appy.mapDefaultValues]);
+      assert.throws(() => {
+        resolver.resolveCommander(commandMock);
+        // Manually trigger the command callback.
+        commandCallback(commandMock, commandMock);
+      }, /mapCmdArgs was not found/);
+    })
+
+    it('maps command line option to value.', () => {
+      console.log(`resolver(3): ${util.inspect(resolver)}`);
+      let config;
+      assert.deepEqual(
+        config = resolver.resolveConfig(configTree3, [appy.mapDefaultValues, appy.mapCmdArgs]),
+        {
+          key1: {
+            key1a: "value1a"
+          },
+          key2: "value2"
+        }
+      );
       resolver.resolveCommander(commandMock);
       // Manually trigger the command callback.
       commandCallback(commandMock, commandMock);
-    }, /mapCmdArgs was not found/);
+      assert.deepEqual(
+        resolver.valueTree,
+        {
+          key1: {
+            key1a: "optvalue1"
+          },
+          key2: "optvalue2"
+        }
+      )
+    })
   })
-})
-
-test('mapCommanderArgs maps command line option to value.', t => {
-
 })
