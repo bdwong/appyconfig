@@ -113,13 +113,11 @@ test.describe('ConfigResolver', async() => {
 
   beforeEach(() => {
     resolver = new appy.ConfigResolver();
-    console.log(`resolver(1): ${util.inspect(resolver)}`);
     commandCallback = null;
   })
 
   describe('mapCommanderArgs', () => {
     it('throws an error if called before resolveConfig', () => {
-      console.log(`resolver(2): ${util.inspect(resolver)}`);
       assert.throws(() => {
         resolver.resolveCommander(commandMock);
         // Manually trigger the command callback.
@@ -136,7 +134,6 @@ test.describe('ConfigResolver', async() => {
 
 
     it('throws an error if mapCmdArgs is not in the resolveMaps array', () => {
-      console.log(`resolver(3): ${util.inspect(resolver)}`);
       resolver.resolveConfig(configTree3, [appy.mapDefaultValues]);
       assert.throws(() => {
         resolver.resolveCommander(commandMock);
@@ -146,7 +143,6 @@ test.describe('ConfigResolver', async() => {
     })
 
     it('maps command line option to value.', () => {
-      console.log(`resolver(3): ${util.inspect(resolver)}`);
       let config;
       assert.deepEqual(
         config = resolver.resolveConfig(configTree3, [appy.mapDefaultValues, appy.mapCmdArgs]),
