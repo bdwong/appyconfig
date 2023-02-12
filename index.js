@@ -135,7 +135,6 @@ class ConfigResolver {
       //    - get the existing config tree and value tree and resolve immediately.
       // 2) The config has not yet been resolved.
       //    - We cannot continue because we don't have access to the config tree.
-      //    - TODO: Implement ConfigResolver and require it call to resolveCommander().
 
       if (this.valueTree === null) {
         throw new Error("resolveCommander() was called before resolveConfig().");
