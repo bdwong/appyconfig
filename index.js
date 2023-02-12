@@ -33,8 +33,8 @@ function mapCmdArgs(_cfg, value) {
 /**
  * @description If the environment variable cfg exists, then use its value,
  *    otherwise keep the current value.
- * @param {*} cfg 
- * @param {*} value 
+ * @param {*} cfg
+ * @param {*} value
  * @returns value of the environment variable if it exists, otherwise value.
  */
 function mapEnv(cfg, value) {
@@ -77,7 +77,7 @@ class ConfigResolver {
     this.configTree = {};
     this.valueTree = null;
   }
-  
+
   /**
    * @description If an appropriate hook has been added to a Commander instance,
    *    find the option in program.opts or program.args.
@@ -106,8 +106,8 @@ class ConfigResolver {
   /**
    * @description Gathers app configuration from various sources and
    *    presents them as a single hash.
-   * @param {*} configTree 
-   * @param {*} resolveMaps 
+   * @param {*} configTree
+   * @param {*} resolveMaps
    * @returns configuration values resolved from different sources.
    */
   resolveConfig(configTree, resolveMaps = DEFAULT_MAPPING) {
