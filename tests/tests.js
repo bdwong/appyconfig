@@ -1,6 +1,7 @@
-const test = require('test');
+const { mock, test, describe, beforeEach, it } = require('test');
 const assert = require('node:assert/strict');
 const appy = require('../index');
+const util = require('util');
 
 test('resolveConfig exists', t => {
   assert.notEqual(appy.resolveConfig, undefined);
@@ -98,9 +99,31 @@ test('second mapping overrides first mapping', t => {
   )
 })
 
-// Is this necessary?
-test('mapCommanderArgs throws error if called before resolveConfig', t => {
+test.describe('ConfigResolver', async() => {
+  let resolver = null;
+  let commandCallback;
+  let commandMock = {
+    hook: mock.fn((_hook, callback) => {
+      commandCallback = callback;
+    }),
+    args: (_name) => (''),
+    opts: (_name) => ('')
+  };
 
+  beforeEach(() => {
+    resolver = new appy.ConfigResolver();
+    console.log(`resolver(1): ${util.inspect(resolver)}`);
+    commandCallback = null;
+  })
+
+  it('throws an error if mapCommanderArgs called before resolveConfig', () => {
+    console.log(`resolver(2): ${util.inspect(resolver)}`);
+    assert.throws(() => {
+      resolver.resolveCommander(commandMock);
+      // Manually trigger the command callback.
+      commandCallback(commandMock, commandMock);
+    }, /mapCmdArgs was not found/);
+  })
 })
 
 test('mapCommanderArgs maps command line option to value.', t => {

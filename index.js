@@ -168,6 +168,7 @@ class ConfigResolver {
 let g_configResolver = new ConfigResolver();
 
 module.exports = {
+  ConfigResolver,
   resolveConfig: g_configResolver.resolveConfig,
   resolveCommander: g_configResolver.resolveCommander,
   mapDefaultValues, mapCmdArgs, mapEnv, mapValidation, mapNull,
