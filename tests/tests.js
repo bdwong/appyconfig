@@ -13,14 +13,18 @@ test('empty tree returns empty hash', t => {
 
 const configTree0 = {
   key1: {
-    key1a: ["value1a"]
+    key1a: {
+      default: "value1a"
+    }
   },
-  key2: ["value2"]
+  key2: {
+    default: "value2"
+  }
 }
 
-test('null map returns keys only', t => {
+test('null map returns keys only', {only: true}, t => {
   assert.deepEqual(
-    appy.resolveConfig(configTree0, appy.mapNull),
+    appy.resolveConfig(configTree0, new appy.NullLoader),
     {
       key1: {
         key1a: null
@@ -32,7 +36,7 @@ test('null map returns keys only', t => {
 // test default values
 test('mapDefaultValues assigns value to keys', t => {
   assert.deepEqual(
-    appy.resolveConfig(configTree0, appy.mapDefaultValues),
+    appy.resolveConfig(configTree0, new appy.DefaultValueLoader),
     {
       key1: {
         key1a: "value1a"
@@ -42,10 +46,16 @@ test('mapDefaultValues assigns value to keys', t => {
 })
 
 const configTree1 = {
-  root_variable1: ["APPY_TEST_ENV1"],
+  root_variable1: {
+    env: "APPY_TEST_ENV1"
+  },
   app: {
-    variable2: ["APPY_TEST_ENV2"],
-    variable3: ["APPY_TEST_ENV3"],
+    variable2: {
+      env: "APPY_TEST_ENV2",
+    },
+    variable3: {
+      env: ["APPY_TEST_ENV3"]
+    }
   }
 }
 
@@ -54,7 +64,7 @@ test('mapEnv assigns environment variables to keys', t => {
   process.env.APPY_TEST_ENV1 = "Environment Value 1";
   process.env.APPY_TEST_ENV2 = "Environment Value 2";
   assert.deepEqual(
-    appy.resolveConfig(configTree1, appy.mapEnv),
+    appy.resolveConfig(configTree1, new appy.EnvLoader),
     {
       root_variable1: "Environment Value 1",
       app: {
@@ -66,15 +76,39 @@ test('mapEnv assigns environment variables to keys', t => {
 })
 
 const configTree2 = {
-  rootVariable1: [null, "APPY_TEST_ENV_NULL"],
-  rootVariable2: [null, "APPY_TEST_ENV_STRING"],
-  rootVariable3: ["Root 3 default value", "APPY_TEST_ENV_NULL"],
-  rootVariable4: ["Root 4 default value", "APPY_TEST_ENV_STRING"],
+  rootVariable1: {
+    default: null,
+    env: "APPY_TEST_ENV_NULL",
+  },
+  rootVariable2: {
+    default: null,
+    env: "APPY_TEST_ENV_STRING",
+  },
+  rootVariable3: {
+    default: "Root 3 default value",
+    env: "APPY_TEST_ENV_NULL",
+  },
+  rootVariable4: {
+    default: "Root 4 default value",
+    env: "APPY_TEST_ENV_STRING",
+  },
   app: {
-    appVariable5: [null, "APPY_TEST_ENV_NULL"],
-    appVariable6: [null, "APPY_TEST_ENV_STRING"],
-    appVariable7: ["Appvar 7 default value", "APPY_TEST_ENV_NULL"],
-    appVariable8: ["Appvar 8 default value", "APPY_TEST_ENV_STRING"],
+    appVariable5: {
+      default: null,
+      env: "APPY_TEST_ENV_NULL",
+    },
+    appVariable6: {
+      default: null,
+      env: "APPY_TEST_ENV_STRING",
+    },
+    appVariable7: {
+      default: "Appvar 7 default value",
+      env: "APPY_TEST_ENV_NULL",
+    },
+    appVariable8: {
+      default: "Appvar 8 default value",
+      env: "APPY_TEST_ENV_STRING",
+    },
   }
 }
 
@@ -83,7 +117,7 @@ test('second mapping overrides first mapping', t => {
   assert.equal(process.env.APPY_TEST_ENV_NULL, undefined);
   process.env.APPY_TEST_ENV_STRING = "Environment Value String";
   assert.deepEqual(
-    appy.resolveConfig(configTree2, [appy.mapDefaultValues, appy.mapEnv]),
+    appy.resolveConfig(configTree2, [new appy.DefaultValueLoader, new appy.EnvLoader]),
     {
       rootVariable1: null,
       rootVariable2: "Environment Value String",
@@ -134,7 +168,7 @@ test.describe('ConfigResolver', async() => {
 
 
     it('throws an error if mapCmdArgs is not in the resolveMaps array', () => {
-      resolver.resolveConfig(configTree3, [appy.mapDefaultValues]);
+      resolver.resolveConfig(configTree3, [new appy.DefaultValueLoader]);
       assert.throws(() => {
         resolver.resolveCommander(commandMock);
         // Manually trigger the command callback.
@@ -145,7 +179,7 @@ test.describe('ConfigResolver', async() => {
     it('maps command line option to value.', () => {
       let config;
       assert.deepEqual(
-        config = resolver.resolveConfig(configTree3, [appy.mapDefaultValues, appy.mapCmdArgs]),
+        config = resolver.resolveConfig(configTree3, [new appy.DefaultValueLoader, new appy.CmdArgsLoader]),
         {
           key1: {
             key1a: "value1a"
