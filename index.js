@@ -86,14 +86,36 @@ class DefaultValueLoader extends ValueLoader {
 }
 
 /**
- * @description Dummy function whose name is used in the config tree when mapping Commander options.
- * @param {*} _cfg - name of the option to look up
- * @param {*} value - value to return
- * @returns value
+ * @description Used to map command line arguments (i.e. Commander options) into the config tree.
+ * @description If an appropriate hook has been added to a Commander instance,
+ *    find the option in program.opts or program.args.
+ * @param {*} cfg - the name of the option to look up.
+ * @param {*} value - current value of the value tree
+ * @returns the value of the selected command line option if arguments have been parsed, otherwise returns value.
  */
 class CmdArgsLoader extends ValueLoader {
+  constructor() {
+    super();
+    this.mapKey = "cmdArg";
+  }
+
+  setCommand(newCommand) {
+    // the Commander program or subcommand that has parsed options.
+    this.command = newCommand;
+  }
+
   mapValue(cfg, value) {
-    return value;
+    if (this.command == null) { // Command line args have not been parsed yet.
+      return value;
+    }
+
+    if (this.command.args(cfg)) {
+      return this.command.args(cfg);
+    } else if (this.command.opts(cfg)) {
+      return this.command.opts(cfg);
+    } else {
+      return value;
+    }
   }
 }
 
@@ -208,31 +230,6 @@ class ConfigResolver {
   }
 
   /**
-   * @description If an appropriate hook has been added to a Commander instance,
-   *    find the option in program.opts or program.args.
-   * @param {*} command - the Commander program or subcommand that has parsed options.
-   * @param {*} cfg - the name of the option to look up.
-   * @param {*} value - current value of the value tree
-   * @returns the value of the selected command line option
-   */
-  mapCommanderArgs(command, cfg, value) {
-    if (this.valueTree == null) { // This should never happen.
-      throw new Error(
-        "mapCommanderArgs() called during config resolver stage.\n" +
-        "Do not specify mapCommanderArgs in the config tree directly."
-      );
-    }
-
-    if (command.args(cfg)) {
-      return command.args(cfg);
-    } else if (command.opts(cfg)) {
-      return command.opts(cfg);
-    } else {
-      return value;
-    }
-  }
-
-  /**
    * @description Gathers app configuration from various sources and
    *    presents them as a single hash.
    * @param {*} configTree
@@ -273,18 +270,13 @@ class ConfigResolver {
         throw new Error("resolveCommander() was called before resolveConfig().");
       }
 
-      let index = this.resolveMaps.indexOf(mapCmdArgs);
-      if (index === -1) {
-        // Cannot continue without access to the config elements for mapCmdArgs.
-        throw new Error("mapCmdArgs was not found in the configuration resolver order.");
+      const cmdArgsLoader = this.resolveMaps.find( (obj) => (obj instanceof CmdArgsLoader));
+      if (!cmdArgsLoader) {
+        throw new Error("cmdArgsLoader was not found in the configuration resolver order.");
       }
 
-      this.valueTree = visitTree(
-        [this.configTree, this.valueTree, index],
-        // Partial application of function mapCommanderArgs in place of mapCmdArgs,
-        // to pass in actionCommand for opts and args.
-        this.mapCommanderArgs.bind(this, actionCommand)
-      );
+      cmdArgsLoader.setCommand(actionCommand);
+      this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
     })
   }
 }
