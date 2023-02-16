@@ -2,6 +2,7 @@ const { mock, test, describe, beforeEach, it } = require('test');
 const assert = require('node:assert/strict');
 const appy = require('../index');
 const util = require('util');
+const path = require('path');
 
 test('resolveConfig exists', t => {
   assert.notEqual(appy.resolveConfig, undefined);
@@ -208,3 +209,17 @@ test.describe('ConfigResolver', async() => {
     })
   })
 })
+
+
+// test JSON file loader
+test('JsonFileLoader assigns values to keys', t => {
+  assert.deepEqual(
+    appy.resolveConfig(configTree0, new appy.JsonLoader(path.join(__dirname, "testconfig.json")) ),
+    {
+      key1: {
+        key1a: "value1a"
+      },
+      key2: "value2"
+    })
+})
+

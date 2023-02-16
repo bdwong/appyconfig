@@ -154,11 +154,10 @@ class FileLoader extends ValueLoader {
   }
 
   // FileLoader implementation iterates on fileBranch and valueBranch.
-  visitTree(fileBranch, valueBranch) {
-    const keys = this.keys(fileBranch, valueBranch)
-    for(const key of keys) {
-      if(typeof(fileBranch[key] == Object) && !Array.isArray(fileBranch[key])) {
-        valueBranch[key] = this.visitTree(fileBranch[key], valueBranch[key] ?? {});
+  visitTree(fileBranch, valueBranch = {}) {
+    for(const key in fileBranch) {
+      if(fileBranch[key] !== null && typeof(fileBranch[key]) === 'object' && !Array.isArray(fileBranch[key])) {
+        valueBranch[key] = this.visitTree(fileBranch[key], valueBranch[key]);
       } else {
         valueBranch[key] = this.mapValue(fileBranch[key], valueBranch[key]);
       }
@@ -166,18 +165,18 @@ class FileLoader extends ValueLoader {
     return valueBranch;
   }
 
-  mapValue(cfg, value) {
+  mapValue(_cfg, _value) {
     throw new NotImplemented("FileLoader is an abstract and cannot be mapped.");
   }
 
-  loadValues(configTree, valueTree) {
+  loadValues(_configTree, valueTree) {
     this.fileData = readFileSync(this.filename);
     return this.visitTree(this.fileData, valueTree);
   }
 }
 
 class JsonLoader extends FileLoader {
-  loadValues(_configTree, _valueTree) {
+  loadValues(_configTree, valueTree) {
     this.fileData = JSON.parse(readFileSync(this.filename));
     return this.visitTree(this.fileData, valueTree);
   }
@@ -267,6 +266,6 @@ module.exports = {
   ConfigResolver,
   resolveConfig: g_configResolver.resolveConfig,
   resolveCommander: g_configResolver.resolveCommander,
-  DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader,
+  DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader, JsonLoader,
   stringType, booleanType, intType
 }
