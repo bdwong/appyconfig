@@ -217,9 +217,13 @@ test('JsonFileLoader assigns values to keys', t => {
     appy.resolveConfig(configTree0, new appy.JsonLoader(path.join(__dirname, "testconfig.json")) ),
     {
       key1: {
-        key1a: "value1a"
+        key1a: "value1a",
+        keyTrue: true,
+        keyNumeric: 10,
       },
-      key2: "value2"
+      key2: "value2",
+      keyFalse: false,
+      keyFloat: 3.14,
     })
 })
 
