@@ -12,10 +12,6 @@ class ValueLoader {
     this.mapKey = null;
   }
 
-  keys(configBranch, valueBranch) {
-    return Array.from(new Set([...Object.keys(configBranch),...Object.keys(valueBranch)]));
-  }
-
   hasSubKeys(configBranch) {
     return configBranch && Object.keys(configBranch).some( (key) => {
       return configBranch[key] !== null && typeof(configBranch[key]) === 'object' && !Array.isArray(configBranch[key]);
@@ -147,10 +143,6 @@ class FileLoader extends ValueLoader {
     super();
     this.filename = filename;
     this.fileData = null;
-  }
-
-  keys(fileBranch, valueBranch) {
-    return Array.from(new Set([...Object.keys(fileBranch),...Object.keys(valueBranch)]));
   }
 
   // FileLoader implementation iterates on fileBranch and valueBranch.
