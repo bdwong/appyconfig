@@ -45,7 +45,7 @@ class ValueLoader {
   }
 
   mapValue(_cfg, _value) {
-    throw new NotImplemented("ValueLoader is an abstract and cannot be mapped.");
+    throw new NotImplemented("ValueLoader is abstract and cannot be mapped.");
   }
 
   loadValues(configTree, valueTree) {
@@ -158,7 +158,7 @@ class FileLoader extends ValueLoader {
   }
 
   mapValue(_cfg, _value) {
-    throw new NotImplemented("FileLoader is an abstract and cannot be mapped.");
+    throw new NotImplemented("FileLoader is abstract and cannot be mapped.");
   }
 
   loadValues(_configTree, valueTree) {

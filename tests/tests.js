@@ -226,4 +226,3 @@ test('JsonFileLoader assigns values to keys', t => {
       keyFloat: 3.14,
     })
 })
-
