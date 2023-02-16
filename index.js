@@ -1,5 +1,4 @@
 const { readFileSync } = require('fs');
-const util = require('util');
 
 const stringType = new Object(),
   booleanType = new Object(),
@@ -225,7 +224,6 @@ class ConfigResolver {
     }, valueTree);
 
     this.valueTree = valueTree;
-    console.log(util.inspect(valueTree));
     return valueTree ?? {};
   }
 

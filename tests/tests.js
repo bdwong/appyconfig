@@ -1,7 +1,6 @@
 const { mock, test, describe, beforeEach, it } = require('test');
 const assert = require('node:assert/strict');
 const appy = require('../index');
-const util = require('util');
 const path = require('path');
 
 test('resolveConfig exists', t => {
