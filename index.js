@@ -1,4 +1,5 @@
 const { readFileSync } = require('fs');
+const { parse: parseJsonc } = require('jsonc-parser');
 
 const stringType = new Object(),
   booleanType = new Object(),
@@ -168,7 +169,7 @@ class FileLoader extends ValueLoader {
 
 class JsonLoader extends FileLoader {
   loadValues(_configTree, valueTree) {
-    this.fileData = JSON.parse(readFileSync(this.filename));
+    this.fileData = parseJsonc(readFileSync(this.filename).toString());
     return this.visitTree(this.fileData, valueTree);
   }
 
