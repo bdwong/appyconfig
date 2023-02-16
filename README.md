@@ -26,12 +26,12 @@ Examples of data sources are:
 
 Each of these data sources has a corresponding Loader class, and most have a key that will represent options in the configuration tree.
 
-| Data source | Class | Configuration Key | Other considerations
+| Data source | Class | Key | Other considerations |
 |--- |--- |--- |--- |
-| Default values | DefaultValueLoader | default |
-| Environment variables | EnvLoader | env |
-| Command line arguments | CmdArgsLoader | cmdArg |
-| JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader.
+| Default values | DefaultValueLoader | default | Key is value to set |
+| Environment variables | EnvLoader | env | Key is the environment variable to fetch |
+| Command line arguments | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
+| JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader |
 
 ## Example
 
