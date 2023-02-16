@@ -200,26 +200,6 @@ class ValidationLoader extends ValueLoader {
 const DEFAULT_MAPPING = [new DefaultValueLoader(), new EnvLoader()];
 
 /**
- * @description Visit every key in the config tree and value tree in parallel.
- *              Perform a task if its value is a leaf node.
- * @param {*} branch : current branch/node of the tree
- * @param {*} task : task to execute on the node
- * @returns a new tree transformed by task.
- */
-// function visitTree([configBranch, valueBranch, index], taskFn) {
-//   const keys = Array.from(new Set([...Object.keys(configBranch),...Object.keys(valueBranch)]));
-//   for(const key of keys) {
-//     if (Array.isArray(configBranch[key])) {
-//       valueBranch[key] = taskFn(configBranch[key][index], valueBranch[key]);
-//     } else {
-//       valueBranch[key] = visitTree([configBranch[key], valueBranch[key] ?? {}, index], taskFn);
-//     }
-//   }
-//   return valueBranch;
-// }
-
-
-/**
  * Class to encapsulate the configuration resolution logic for easier testing.
  */
 class ConfigResolver {
