@@ -173,7 +173,7 @@ test.describe('ConfigResolver', async() => {
         resolver.resolveCommander(commandMock);
         // Manually trigger the command callback.
         commandCallback(commandMock, commandMock);
-      }, /mapCmdArgs was not found/);
+      }, /cmdArgsLoader was not found/);
     })
 
     it('maps command line option to value.', () => {

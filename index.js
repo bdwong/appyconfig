@@ -18,7 +18,7 @@ class ValueLoader {
 
   hasSubKeys(configBranch) {
     return configBranch && Object.keys(configBranch).some( (key) => {
-      return typeof(configBranch[key]) === 'object' && !Array.isArray(configBranch[key]);
+      return configBranch[key] !== null && typeof(configBranch[key]) === 'object' && !Array.isArray(configBranch[key]);
     })
   }
 
@@ -28,7 +28,7 @@ class ValueLoader {
     if (Array.isArray(configBranch)) {
       return this.mapValue(configBranch[0], valueBranch);
     }
-    if (typeof(configBranch) !== 'object') {
+    if (configBranch === null || typeof(configBranch) !== 'object') {
       return this.mapValue(configBranch, valueBranch);
     }
 
