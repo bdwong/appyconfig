@@ -161,9 +161,15 @@ test.describe('ConfigResolver', async() => {
 
     const configTree3 = {
       key1: {
-        key1a: ["value1a", "opt1"]
+        key1a: {
+          default: "value1a",
+          cmdArg: "opt1",
+        }
       },
-      key2: ["value2", "opt2"]
+      key2: {
+        default: "value2",
+        cmdArg: "opt2",
+      },
     }
 
 
