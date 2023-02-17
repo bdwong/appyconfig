@@ -168,8 +168,19 @@ class FileLoader extends ValueLoader {
 }
 
 class JsonLoader extends FileLoader {
+  constructor(filename, suppressExceptions = false) {
+    super(filename);
+    this.suppressExceptions = suppressExceptions;
+  }
   loadValues(_configTree, valueTree) {
-    this.fileData = parseJsonc(readFileSync(this.filename).toString());
+    try {
+      this.fileData = parseJsonc(readFileSync(this.filename).toString());
+    } catch(e) {
+      if(!this.suppressExceptions) {
+        throw e;
+      }
+      this.fileData = {};
+    }
     return this.visitTree(this.fileData, valueTree);
   }
 
