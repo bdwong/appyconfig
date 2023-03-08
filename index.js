@@ -266,8 +266,8 @@ let g_configResolver = new ConfigResolver();
 
 module.exports = {
   ConfigResolver,
-  resolveConfig: g_configResolver.resolveConfig,
-  resolveCommander: g_configResolver.resolveCommander,
+  resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
+  resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
   DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader, JsonLoader,
   stringType, booleanType, intType
 }
