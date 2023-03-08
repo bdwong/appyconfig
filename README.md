@@ -1,6 +1,6 @@
 # appyconfig
 
-Read application configuration data from different sources in a unified way.
+Read and unify application configuration data from different sources.
 
 # Install
 
@@ -10,10 +10,41 @@ npm install appyconfig
 
 # Configuration
 
-1. Decide on data sources for your configuration tree.
-2. Create a `config.js` file that resolves and exports your configuration.
-3. Create a configuration tree that reflects your configuration options and specifies how to get the data from each configuration source.
-4. Require your `config.js` wherever the config is needed.
+1. Create a configuration tree in `config.js` that declares your configuration sources and options.
+2. Call `resolve_config()` to resolve the configuration.
+3. Require/import your `config.js` wherever the config is needed.
+
+## Example
+
+In your lib/config.js:
+
+```js
+const { resolveConfig } = require('appyconfig');
+
+// Define default values and the environment variables that will override them.
+const config_tree = {
+  "dbuser": {
+    default: "root",
+    env: "DB_USERNAME"
+  },
+  "dbpass": {
+    env: "DB_PASSWORD"
+  }
+}
+
+const config = resolve_config(config_tree);
+
+// Export your config.
+module.exports = config;
+```
+
+Now require 'lib/config' from your app to get the global configuration.
+
+```js
+const config = require('lib/config');
+
+console.log(`Using db user #{config.dbuser}.`);
+```
 
 ## Data Sources
 
@@ -33,59 +64,96 @@ Each of these data sources has a corresponding Loader class, and most have a key
 | Command line arguments | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
 | JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader |
 
-## Example
+### Default values
 
-In your lib/config.js:
+A config option with a default value must have a property named "default"
+whose value is the default.
+
+### Environment variables
+
+A config option with an environment variable must have a property named "env"
+whose value is the name of the environment variable to read.
+
+### Command line arguments
+
+See the ***Commander Example*** below.
+
+### JSON files
+
+To read from JSON files, you will need to instantiate a new `ConfigResolver` and pass an instance of `JsonLoader`.
+The file will be read and the configuration will be merged in the order you provide to the ConfigResolver.
+
+You do not need to add anything to the configuration tree for JSON files.
+
+In `config.js`:
+
+```
+const config = resolve_config(config_tree, [
+  new JsonLoader(filename) // file to read.
+]);
+
+module.exports = config;
+```
+
+## Configuration tree structure
+
+Appyconfig expects the configuration tree to be an object with properties, where
+each property name is the name of the configuration option and its value is
+an object containing the parameters to use for different data sources.
+
+### Nested Values
+
+If the value object itself contains objects, then it will be treated as a nested option.
+This is helpful for organizing your configuration.
 
 ```js
-// Require appyconfig.
-const { resolveConfig } = require('appyconfig');
-
-// Define default values and the environment variables that will override them.
+// Nested values example
 const config_tree = {
-  "authorize": {
-    "client": {
-      "id": {
-        default: "1234567890",
-        env: "APP_CLIENT_ID",
-      },
-      "secret": {
-        default: "password123",
-        env: "APP_CLIENT_SECRET",
-      }
+  "api": {  // api options
+    "api_key": {
+      //...
     },
-    "auth": {
-      "tokenHost": {
-        default: "default",
-        env: "APP_AUTH_TOKENHOST",
-      }
+    "api_secret": {
+      //...
     }
   },
-  "app": {
-    "hostname": {
-      default: "localhost",
-      env: "APP_HOSTNAME",
+
+  "db": {   // database options
+    "username": {
+      //...
     },
-    "authorizeCallback": {
-      default: "https://example.com/authorize",
-      env: "APP_AUTHORIZE_CALLBACK_URL"
-    },
-    "tokenCallback": {
-      default: "https://example.com/token",
-      env: "APP_TOKEN_CALLBACK_URL"
-    },
-    "oauthScope": {
-      default: "read",
-      env: "APP_OAUTH_SCOPE"
+    "password": {
+      //...
     }
   }
 }
-
-const config = resolve_config(config_tree);
-
-// Export your config.
-module.exports = config;
 ```
+
+### Configuration Values
+
+In the configuration tree, configuration options can be set to values of any type. If the value is not a simple type, then it must be enclosed in an array.
+
+```js
+  const config_tree = {
+    slogan: {         // String is a simple type
+      default: "This is a cool app!"
+    },
+    logging: {        // Boolean is also a simple type
+      default: true
+    },
+    db: {             // Object is enclosed in an array
+      default: [
+        { hostname: "localhost", port: 3425}
+      ]
+    }
+    migrations: {     // Array is itself enclosed in an array
+      default: [
+        ["20210103", "20210224"]
+      ]
+    }
+  };
+```
+
 ## Customizing the Configuration Resolution Order
 
 By default when running `resolve_config()`, appyconfig will use default config values (`DefaultValueLoader`) first, then override those values with environment variables (`EnvLoader`).
@@ -138,7 +206,7 @@ const config = resolver.resolve_config(config_tree, [
 module.exports = { config, resolveCommander: resolver.resolveCommander };
 ```
 
-In your app.js:
+In `app.js`:
 
 ```js
 const { Command } = require('commander');
@@ -152,10 +220,16 @@ resolveCommander(program);
 program.parse(process.argv);
 ```
 
-And anywhere else you need the configuration:
+Using the configuration:
 
 ```js
 const { config } = require('lib/config');
 
-// Use the config.
+console.log(`My setting: ${config.mysetting}`);
+```
+
+To change the option on the command line:
+
+```sh
+node app.js --my-setting updated
 ```
