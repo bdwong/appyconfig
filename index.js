@@ -1,57 +1,14 @@
 const { readFileSync } = require('fs');
 const { parse: parseJsonc } = require('jsonc-parser');
+const dotenv = require('dotenv');
+const { ValueLoader } = require('./lib/valueLoader.js');
+const { FileLoader } = require('./lib/fileLoader.js');
 
 const stringType = new Object(),
   booleanType = new Object(),
   intType = new Object();
 
 class NotImplementedError extends Error {}
-
-class ValueLoader {
-  constructor() {
-    this.mapKey = null;
-  }
-
-  hasSubKeys(configBranch) {
-    return configBranch && Object.keys(configBranch).some( (key) => {
-      return configBranch[key] !== null && typeof(configBranch[key]) === 'object' && !Array.isArray(configBranch[key]);
-    })
-  }
-
-  // Default implementation iterates on configBranch and valueBranch.
-  visitTree(configBranch, valueBranch) {
-    // Recursion, return end cases.
-    if (Array.isArray(configBranch)) {
-      return this.mapValue(configBranch[0], valueBranch);
-    }
-    if (configBranch === null || typeof(configBranch) !== 'object') {
-      return this.mapValue(configBranch, valueBranch);
-    }
-
-    // Look one level deeper to differentiate subkeys from mapping keys.
-    // if contains an object, it's a subkey.
-    if (this.hasSubKeys(configBranch)) {
-      // Visit subkeys
-      valueBranch ??= {};
-      for(const key in configBranch) {
-        valueBranch[key] = this.visitTree(configBranch[key], valueBranch[key]);
-      }
-    } else {
-      // Perform the config mapping with mapping keys.
-      valueBranch = this.visitTree(configBranch[this.mapKey], valueBranch);
-    }
-
-    return valueBranch;
-  }
-
-  mapValue(_cfg, _value) {
-    throw new NotImplemented("ValueLoader is abstract and cannot be mapped.");
-  }
-
-  loadValues(configTree, valueTree) {
-    return this.visitTree(configTree, valueTree);
-  }
-}
 
 
 /**
@@ -137,36 +94,6 @@ class EnvLoader extends ValueLoader {
   }
 }
 
-
-class FileLoader extends ValueLoader {
-  constructor(filename) {
-    super();
-    this.filename = filename;
-    this.fileData = null;
-  }
-
-  // FileLoader implementation iterates on fileBranch and valueBranch.
-  visitTree(fileBranch, valueBranch = {}) {
-    for(const key in fileBranch) {
-      if(fileBranch[key] !== null && typeof(fileBranch[key]) === 'object' && !Array.isArray(fileBranch[key])) {
-        valueBranch[key] = this.visitTree(fileBranch[key], valueBranch[key]);
-      } else {
-        valueBranch[key] = this.mapValue(fileBranch[key], valueBranch[key]);
-      }
-    }
-    return valueBranch;
-  }
-
-  mapValue(_cfg, _value) {
-    throw new NotImplemented("FileLoader is abstract and cannot be mapped.");
-  }
-
-  loadValues(_configTree, valueTree) {
-    this.fileData = readFileSync(this.filename);
-    return this.visitTree(this.fileData, valueTree);
-  }
-}
-
 class JsonLoader extends FileLoader {
   constructor(filename, suppressExceptions = false) {
     super(filename);
@@ -175,6 +102,32 @@ class JsonLoader extends FileLoader {
   loadValues(_configTree, valueTree) {
     try {
       this.fileData = parseJsonc(readFileSync(this.filename).toString());
+    } catch(e) {
+      if(!this.suppressExceptions) {
+        throw e;
+      }
+      this.fileData = {};
+    }
+    return this.visitTree(this.fileData, valueTree);
+  }
+
+  mapValue(cfg, value) {
+    if (cfg !== undefined) {
+      return cfg;
+    } else {
+      return value;
+    }
+  }
+}
+
+class DotenvLoader extends FileLoader {
+  constructor(filename, suppressExceptions = false) {
+    super(filename);
+    this.suppressExceptions = suppressExceptions;
+  }
+  loadValues(_configTree, valueTree) {
+    try {
+      this.fileData = dotenv.parse(readFileSync(this.filename));
     } catch(e) {
       if(!this.suppressExceptions) {
         throw e;
@@ -268,6 +221,7 @@ module.exports = {
   ConfigResolver,
   resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
-  DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader, JsonLoader,
+  DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader,
+  JsonLoader, DotenvLoader,
   stringType, booleanType, intType
 }

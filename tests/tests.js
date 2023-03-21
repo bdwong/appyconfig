@@ -243,3 +243,15 @@ describe('JsonLoader', () => {
     }, /no such file or directory/);
   });
 });
+
+describe('DotenvLoader', () => {
+  it('assigns values to keys', () => {
+    assert.deepEqual(
+      appy.resolveConfig(configTree0, new appy.DotenvLoader(path.join(__dirname, "test.env")) ),
+      {
+        TEST_ENVKEY: "myenv value",
+        TEST_ENVKEY2: "1234",
+      }
+    );
+  });
+});
