@@ -63,6 +63,7 @@ Each of these data sources has a corresponding Loader class, and most have a key
 | Environment variables | EnvLoader | env | Key is the environment variable to fetch |
 | Command line arguments | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
 | JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader |
+| .env file | DotenvLoader | dotenv | Specify .env file to load<br>Key is the name of the variable to fetch |
 
 ### Default values
 
@@ -170,6 +171,41 @@ You can choose to use different sources. For example, to fill the configuration 
 
 ```js
 const config = resolve_config(config_tree, [new NullLoader])
+```
+
+## Dotenv
+
+You can load a specific `.env ` file and retrieve values in the same way that you retrieve environment variables.
+
+```sh
+# dotenv file
+DB_USERNAME="MyUsername"
+DB_PASSWORD="secret"
+```
+
+In your config.js:
+
+```js
+const config = resolve_config(config_tree, [new DotenvLoader("/approot/.env.production")]);
+```
+
+And in your config tree:
+
+```js
+const config_tree = {
+  "dbuser": {
+    dotenv: "DB_USERNAME"
+  },
+  "dbpass": {
+    dotenv: "DB_PASSWORD"
+  }
+}
+```
+
+If you are already parsing environment variables, you can instead load the dotenv file first, then continue to read environment variables with the '`env`' key. In config.js:
+
+```js
+const dotenv = require('dotenv').config();
 ```
 
 ## Commander
