@@ -1,7 +1,7 @@
 const { readFileSync } = require('fs');
 const { parse: parseJsonc } = require('jsonc-parser');
 const dotenv = require('dotenv');
-const { ValueLoader } = require('./lib/valueLoader.js');
+const { ValueLoader, copyKeyedMappingAssignmentStrategy } = require('./lib/valueLoader.js');
 const { FileLoader } = require('./lib/fileLoader.js');
 
 const stringType = new Object(),
@@ -99,10 +99,12 @@ class JsonLoader extends FileLoader {
     super(filename);
     this.suppressExceptions = suppressExceptions;
   }
+
   loadValues(_configTree, valueTree) {
     try {
       this.fileData = parseJsonc(readFileSync(this.filename).toString());
     } catch(e) {
+      console.log(`exception: ${e}`);
       if(!this.suppressExceptions) {
         throw e;
       }
@@ -123,9 +125,12 @@ class JsonLoader extends FileLoader {
 class DotenvLoader extends FileLoader {
   constructor(filename, suppressExceptions = false) {
     super(filename);
+    this.mapKey = "dotenv";
     this.suppressExceptions = suppressExceptions;
+    this.assignmentStrategy = copyKeyedMappingAssignmentStrategy.bind(this);
   }
-  loadValues(_configTree, valueTree) {
+
+  loadValues(configTree, valueTree) {
     try {
       this.fileData = dotenv.parse(readFileSync(this.filename));
     } catch(e) {
@@ -134,12 +139,12 @@ class DotenvLoader extends FileLoader {
       }
       this.fileData = {};
     }
-    return this.visitTree(this.fileData, valueTree);
+    return this.visitTree(configTree, valueTree);
   }
 
   mapValue(cfg, value) {
-    if (cfg !== undefined) {
-      return cfg;
+    if (this.fileData[cfg] !== undefined) {
+      return this.fileData[cfg];
     } else {
       return value;
     }

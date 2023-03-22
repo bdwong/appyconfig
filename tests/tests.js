@@ -244,13 +244,26 @@ describe('JsonLoader', () => {
   });
 });
 
+const configTree4 = {
+  values: {
+    key1: {
+      "dotenv": "TEST_ENVKEY"
+    },
+    key2: {
+      "dotenv": "TEST_ENVKEY2"
+    }
+  }
+}
+
 describe('DotenvLoader', () => {
   it('assigns values to keys', () => {
     assert.deepEqual(
-      appy.resolveConfig(configTree0, new appy.DotenvLoader(path.join(__dirname, "test.env")) ),
+      appy.resolveConfig(configTree4, new appy.DotenvLoader(path.join(__dirname, "test.env")) ),
       {
-        TEST_ENVKEY: "myenv value",
-        TEST_ENVKEY2: "1234",
+        values: {
+          key1: "myenv value",
+          key2: "1234"
+        }
       }
     );
   });
