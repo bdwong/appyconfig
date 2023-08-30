@@ -53,7 +53,7 @@ Examples of data sources are:
   - Hard coded default values
   - Environment variables
   - Command line arguments
-  - JSON configuration file
+  - YAML or JSON configuration file
 
 Each of these data sources has a corresponding Loader class, and most have a key that will represent options in the configuration tree.
 
@@ -63,6 +63,7 @@ Each of these data sources has a corresponding Loader class, and most have a key
 | Environment variables | EnvLoader | env | Key is the environment variable to fetch |
 | Command line arguments | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
 | JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader |
+| YAML file | YamlLoader | *N/A* | Specify filename when instantiating YamlLoader |
 | .env file | DotenvLoader | dotenv | Specify .env file to load<br>Key is the name of the variable to fetch |
 
 ### Default values
@@ -95,6 +96,10 @@ const config = resolve_config(config_tree, [
 
 module.exports = config;
 ```
+
+### YAML files
+
+Similar to JSON files, you will need to instantiate a new `ConfigResolver` and pass an instance of `YamlLoader`.
 
 ## Configuration tree structure
 

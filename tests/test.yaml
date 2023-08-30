@@ -1,0 +1,8 @@
+configType: YAML
+key1:
+  key1a: "value1a"
+  keyTrue: true
+  keyNumeric: 42
+key2: "value2"
+keyFalse: false
+keyFloat: 2.718

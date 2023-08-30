@@ -268,3 +268,23 @@ describe('DotenvLoader', () => {
     );
   });
 });
+
+describe('YamlLoader', () => {
+  it('assigns values to keys', () => {
+    assert.deepEqual(
+      appy.resolveConfig(configTree4, new appy.YamlLoader(path.join(__dirname, "test.yaml")) ),
+      {
+        configType: 'YAML',
+        key1: {
+          key1a: 'value1a',
+          keyTrue: true,
+          keyNumeric: 42,
+        },
+        key2: 'value2',
+        keyFalse: false,
+        keyFloat: 2.718,
+      }
+    )
+  })
+
+});

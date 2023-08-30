@@ -3,6 +3,7 @@ const { parse: parseJsonc } = require('jsonc-parser');
 const dotenv = require('dotenv');
 const { ValueLoader, copyKeyedMappingAssignmentStrategy } = require('./lib/valueLoader.js');
 const { FileLoader } = require('./lib/fileLoader.js');
+const yaml = require('js-yaml');
 
 const stringType = new Object(),
   booleanType = new Object(),
@@ -151,6 +152,34 @@ class DotenvLoader extends FileLoader {
   }
 }
 
+class YamlLoader extends FileLoader {
+  constructor(filename, suppressExceptions = false) {
+    super(filename);
+    this.suppressExceptions = suppressExceptions;
+  }
+
+  loadValues(_configTree, valueTree) {
+    try {
+      this.fileData = yaml.load(readFileSync(this.filename).toString(), 'utf8');
+    } catch(e) {
+      console.log(`exception: ${e}`);
+      if(!this.suppressExceptions) {
+        throw e;
+      }
+      this.fileData = {};
+    }
+    return this.visitTree(this.fileData, valueTree);
+  }
+
+  mapValue(cfg, value) {
+    if (cfg !== undefined) {
+      return cfg;
+    } else {
+      return value;
+    }
+  }
+}
+
 class ValidationLoader extends ValueLoader {
   mapValue(_cfg, _value) {
     throw new NotImplemented("ValidationLoader is not yet implemented.");
@@ -227,6 +256,6 @@ module.exports = {
   resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
   DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader,
-  JsonLoader, DotenvLoader,
+  JsonLoader, DotenvLoader, YamlLoader,
   stringType, booleanType, intType
 }
