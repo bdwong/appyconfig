@@ -201,12 +201,12 @@ class ConfigResolver {
   /**
    * @description Gathers app configuration from various sources and
    *    presents them as a single hash.
-   * @param {*} configTree
-   * @param {*} resolveMaps - array of Loader instances.
+   * @param {Object} configTree
+   * @param {Array} resolveMaps - array of Loader instances.
+   * @param {Object} valueTree - initial value of the config object, defaults to an empty object.
    * @returns configuration values resolved from different sources.
    */
-  resolveConfig(configTree, resolveMaps = DEFAULT_MAPPING) {
-    let valueTree = {};
+  resolveConfig(configTree, resolveMaps = DEFAULT_MAPPING, valueTree = {}) {
     if (!Array.isArray(resolveMaps)) {
       resolveMaps = [resolveMaps]
     }

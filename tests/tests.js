@@ -45,6 +45,22 @@ test('mapDefaultValues assigns value to keys', t => {
     })
 })
 
+test ('resolveConfig and mapDefaultValues can overlay two different config trees', t => {
+  const config1 = appy.resolveConfig({key1: {default: 'value1'}}, new appy.DefaultValueLoader);
+  assert.deepEqual(
+    config1,
+    { key1: "value1" }
+  );
+  const config2 = appy.resolveConfig({key2: {default: 'value2'}}, new appy.DefaultValueLoader, config1);
+  assert.deepEqual(
+    config2, {
+      key1: "value1",
+      key2: "value2",
+    }
+  );
+
+})
+
 const configTree1 = {
   root_variable1: {
     env: "APPY_TEST_ENV1"
