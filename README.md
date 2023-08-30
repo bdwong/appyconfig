@@ -11,7 +11,7 @@ npm install appyconfig
 # Configuration
 
 1. Create a configuration tree in `config.js` that declares your configuration sources and options.
-2. Call `resolve_config()` to resolve the configuration.
+2. Call `resolveConfig()` to resolve the configuration.
 3. Require/import your `config.js` wherever the config is needed.
 
 ## Example
@@ -32,7 +32,7 @@ const config_tree = {
   }
 }
 
-const config = resolve_config(config_tree);
+const config = resolveConfig(config_tree);
 
 // Export your config.
 module.exports = config;
@@ -90,7 +90,7 @@ You do not need to add anything to the configuration tree for JSON files.
 In `config.js`:
 
 ```
-const config = resolve_config(config_tree, [
+const config = resolveConfig(config_tree, [
   new JsonLoader(filename) // file to read.
 ]);
 
@@ -162,11 +162,11 @@ In the configuration tree, configuration options can be set to values of any typ
 
 ## Customizing the Configuration Resolution Order
 
-By default when running `resolve_config()`, appyconfig will use default config values (`DefaultValueLoader`) first, then override those values with environment variables (`EnvLoader`).
+By default when running `resolveConfig()`, appyconfig will use default config values (`DefaultValueLoader`) first, then override those values with environment variables (`EnvLoader`).
 This is equivalent to the following code:
 
 ```js
-const config = resolve_config(config_tree, [
+const config = resolveConfig(config_tree, [
   new DefaultValueLoader,
   new EnvLoader
 ]);
@@ -175,7 +175,7 @@ const config = resolve_config(config_tree, [
 You can choose to use different sources. For example, to fill the configuration with null values:
 
 ```js
-const config = resolve_config(config_tree, [new NullLoader])
+const config = resolveConfig(config_tree, [new NullLoader])
 ```
 
 ## Dotenv
@@ -191,7 +191,7 @@ DB_PASSWORD="secret"
 In your config.js:
 
 ```js
-const config = resolve_config(config_tree, [new DotenvLoader("/approot/.env.production")]);
+const config = resolveConfig(config_tree, [new DotenvLoader("/approot/.env.production")]);
 ```
 
 And in your config tree:
@@ -238,7 +238,7 @@ const config_tree = {
 };
 
 const resolver = new ConfigResolver();
-const config = resolver.resolve_config(config_tree, [
+const config = resolver.resolveConfig(config_tree, [
   new DefaultValueLoader,
   new EnvLoader,
   new CmdArgsLoader
@@ -287,7 +287,7 @@ const { program } = require('commander');
 const userConfigFile = program.args[0];
 
 // YamlLoader does not use the config tree, so it's okay to pass an empty object.
-const newConfig = resolve_config({}, new YamlLoader(userConfigFile), config);
+const newConfig = resolveConfig({}, new YamlLoader(userConfigFile), config);
 
 // Do something with newConfig...
 ```
