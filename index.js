@@ -63,6 +63,16 @@ class CmdArgsLoader extends ValueLoader {
       return value;
     }
 
+    if (!(this.command.args instanceof Function)) {
+      // Top-level program.args is an array, not a function.
+      // Also, top-level opts(cfg) always returns the whole options hash.
+      if (this.command.opts(cfg)[cfg]) {
+        return this.command.opts(cfg)[cfg];
+      } else {
+        return value;
+      }
+    }
+
     if (this.command.args(cfg)) {
       return this.command.args(cfg);
     } else if (this.command.opts(cfg)) {

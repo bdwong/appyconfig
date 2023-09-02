@@ -160,6 +160,13 @@ test.describe('ConfigResolver', async() => {
     args: (name) => (cmdOpts[name]),
     opts: (name) => (cmdOpts[name])
   };
+  let programMock = {
+    hook: mock.fn((_hook, callback) => {
+      commandCallback = callback;
+    }),
+    args: [],
+    opts: (name) => (cmdOpts)
+  }
 
   beforeEach(() => {
     resolver = new appy.ConfigResolver();
@@ -212,6 +219,31 @@ test.describe('ConfigResolver', async() => {
       resolver.resolveCommander(commandMock);
       // Manually trigger the command callback.
       commandCallback(commandMock, commandMock);
+      assert.deepEqual(
+        resolver.valueTree,
+        {
+          key1: {
+            key1a: "optvalue1"
+          },
+          key2: "optvalue2"
+        }
+      )
+    })
+
+    it('maps global command line option to value.', () => {
+      let config;
+      assert.deepEqual(
+        config = resolver.resolveConfig(configTree3, [new appy.DefaultValueLoader, new appy.CmdArgsLoader]),
+        {
+          key1: {
+            key1a: "value1a"
+          },
+          key2: "value2"
+        }
+      );
+      resolver.resolveCommander(programMock);
+      // Manually trigger the command callback.
+      commandCallback(programMock, programMock);
       assert.deepEqual(
         resolver.valueTree,
         {

@@ -256,6 +256,9 @@ const { resolveCommander } = require('lib/config');
 const program = new Command();
 resolveCommander(program);
 
+// Note an action must be run to trigger option parsing.
+program.action(() => {});
+
 // Set up your program command line options here...
 
 program.parse(process.argv);
