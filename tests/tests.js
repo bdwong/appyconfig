@@ -152,7 +152,7 @@ test('second mapping overrides first mapping', t => {
 test.describe('ConfigResolver', async() => {
   let resolver = null;
   let commandCallback;
-  const cmdOpts = {opt1: "optvalue1", opt2: "optvalue2"};
+  const cmdOpts = {opt1: "optvalue1", opt2: "optvalue2", optFalse: false};
   let commandMock = {
     hook: mock.fn((_hook, callback) => {
       commandCallback = callback;
@@ -193,6 +193,10 @@ test.describe('ConfigResolver', async() => {
         default: "value2",
         cmdArg: "opt2",
       },
+      key3: {
+        default: true,
+        cmdArg: "optFalse",
+      },
     }
 
 
@@ -213,7 +217,8 @@ test.describe('ConfigResolver', async() => {
           key1: {
             key1a: "value1a"
           },
-          key2: "value2"
+          key2: "value2",
+          key3: true,
         }
       );
       resolver.resolveCommander(commandMock);
@@ -225,7 +230,8 @@ test.describe('ConfigResolver', async() => {
           key1: {
             key1a: "optvalue1"
           },
-          key2: "optvalue2"
+          key2: "optvalue2",
+          key3: false
         }
       )
     })
@@ -238,7 +244,8 @@ test.describe('ConfigResolver', async() => {
           key1: {
             key1a: "value1a"
           },
-          key2: "value2"
+          key2: "value2",
+          key3: true
         }
       );
       resolver.resolveCommander(programMock);
@@ -250,7 +257,8 @@ test.describe('ConfigResolver', async() => {
           key1: {
             key1a: "optvalue1"
           },
-          key2: "optvalue2"
+          key2: "optvalue2",
+          key3: false
         }
       )
     })
