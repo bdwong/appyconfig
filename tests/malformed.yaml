@@ -1,0 +1,4 @@
+key1: value1
+  bad_indent: this will fail
+ another: broken
+key2: [unterminated

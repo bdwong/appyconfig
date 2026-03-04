@@ -4,7 +4,7 @@
   "description": "Read application configuration data from different sources in a unified way.",
   "main": "index.js",
   "scripts": {
-    "test": "node tests/tests.js"
+    "test": "node --test tests/test-*.js"
   },
   "keywords": [
     "app",
