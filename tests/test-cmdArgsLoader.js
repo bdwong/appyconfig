@@ -75,6 +75,28 @@ describe('CmdArgsLoader', () => {
       }, { parent: { child: 'old' } });
       assert.deepEqual(result, { parent: { child: 'optvalue1' } });
     });
+
+    it('resolves deeply nested config tree via loadValues', () => {
+      const loader = new CmdArgsLoader();
+      loader.setCommand(subcommandMock);
+      const result = loader.loadValues({
+        server: {
+          connection: {
+            host: { cmdArg: 'opt1' },
+            port: { cmdArg: 'opt2' }
+          },
+          flags: {
+            debug: { cmdArg: 'optFalse' }
+          }
+        }
+      }, { server: { connection: { host: 'old', port: 'old' }, flags: { debug: true } } });
+      assert.deepEqual(result, {
+        server: {
+          connection: { host: 'optvalue1', port: 'optvalue2' },
+          flags: { debug: false }
+        }
+      });
+    });
   });
 
   describe('program-level parsing — args is Array', () => {
@@ -117,6 +139,28 @@ describe('CmdArgsLoader', () => {
         }
       }, { parent: { child: 'old' } });
       assert.deepEqual(result, { parent: { child: 'optvalue1' } });
+    });
+
+    it('resolves deeply nested config tree via loadValues', () => {
+      const loader = new CmdArgsLoader();
+      loader.setCommand(programMock);
+      const result = loader.loadValues({
+        server: {
+          connection: {
+            host: { cmdArg: 'opt1' },
+            port: { cmdArg: 'opt2' }
+          },
+          flags: {
+            debug: { cmdArg: 'optFalse' }
+          }
+        }
+      }, { server: { connection: { host: 'old', port: 'old' }, flags: { debug: true } } });
+      assert.deepEqual(result, {
+        server: {
+          connection: { host: 'optvalue1', port: 'optvalue2' },
+          flags: { debug: false }
+        }
+      });
     });
   });
 });
