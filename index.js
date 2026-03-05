@@ -253,8 +253,13 @@ class ConfigResolver {
         throw new Error("cmdArgsLoader was not found in the configuration resolver order.");
       }
 
-      cmdArgsLoader.setCommand(actionCommand);
+      cmdArgsLoader.setCommand(thisCommand);
       this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
+
+      if (thisCommand !== actionCommand) {
+        cmdArgsLoader.setCommand(actionCommand);
+        this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
+      }
     })
   }
 }
