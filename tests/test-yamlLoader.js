@@ -39,7 +39,7 @@ describe('YamlLoader', () => {
     assert.throws(() => loader.loadValues({}, {}), /no such file or directory/);
   });
 
-  it('suppresses exception with flag when file not found', () => {
+  it('skips missing file with allowMissing flag', () => {
     const loader = new YamlLoader(missingFile, true);
     assert.doesNotThrow(() => loader.loadValues({}, {}));
   });
@@ -49,8 +49,8 @@ describe('YamlLoader', () => {
     assert.throws(() => loader.loadValues({}, {}));
   });
 
-  it('suppresses exception on malformed YAML with flag', () => {
+  it('throws on malformed YAML even with allowMissing', () => {
     const loader = new YamlLoader(malformedFile, true);
-    assert.doesNotThrow(() => loader.loadValues({}, {}));
+    assert.throws(() => loader.loadValues({}, {}));
   });
 });

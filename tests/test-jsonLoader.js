@@ -48,7 +48,7 @@ describe('JsonLoader', () => {
     assert.throws(() => loader.loadValues({}, {}), /no such file or directory/);
   });
 
-  it('suppresses exception with flag when file not found', () => {
+  it('skips missing file with allowMissing flag', () => {
     const loader = new JsonLoader(missingFile, true);
     assert.doesNotThrow(() => loader.loadValues({}, {}));
   });
@@ -61,7 +61,7 @@ describe('JsonLoader', () => {
     assert.equal(typeof result.keyFloat, 'number');
   });
 
-  it('returns empty-ish result when suppressed and file missing', () => {
+  it('returns empty-ish result when allowMissing and file missing', () => {
     const loader = new JsonLoader(missingFile, true);
     const result = loader.loadValues({}, {});
     assert.deepEqual(result, {});

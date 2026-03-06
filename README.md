@@ -10,19 +10,16 @@ npm install appyconfig
 
 # Usage
 
-Call `resolveConfig()` with one or more loaders to gather configuration from different sources. Keys are automatically converted to camelCase.
+Call `resolveConfig()` to gather configuration from different sources. With no arguments, it loads from `config.json` (if present), `.env` (if present), and `APP_`-prefixed environment variables. Keys are automatically converted to camelCase.
 
 ## Basic Example
 
 In `lib/config.js`:
 
 ```js
-const { resolveConfig, EnvLoader } = require('appyconfig');
+const { resolveConfig } = require('appyconfig');
 
-// Read all environment variables starting with APP_ and strip the prefix.
-const config = resolveConfig([
-  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
-]);
+const config = resolveConfig();
 
 module.exports = config;
 ```
@@ -42,12 +39,14 @@ Running your app:
 APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
 ```
 
-Without any arguments, `resolveConfig()` reads all environment variables:
+The defaults look for `config.json` and `.env` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), then read `APP_`-prefixed environment variables. Both files are optional and silently skipped if missing. This is equivalent to:
 
 ```js
-const config = resolveConfig();
-
-console.log(config.home); // e.g. "/home/user"
+const config = resolveConfig([
+  new JsonLoader('config.json', true),  // allowMissing
+  new DotenvLoader('.env', { allowMissing: true }),
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
+]);
 ```
 
 ## Multiple Loaders
@@ -115,7 +114,7 @@ new DotenvLoader('.env', { prefix: 'DB_', stripPrefix: true })
 | Environment variables | EnvLoader | Options: `{ prefix, stripPrefix }` |
 | JSON file | JsonLoader | Supports JSONC (comments) |
 | YAML file | YamlLoader | |
-| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, suppressExceptions }` |
+| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, allowMissing }` |
 | Command line arguments | CmdArgsLoader | See Commander section below |
 
 # Advanced Usage

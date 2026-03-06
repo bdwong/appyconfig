@@ -5,12 +5,36 @@ const appy = require('../index');
 
 describe('No configTree usage', () => {
   describe('resolveConfig argument detection', () => {
-    it('no args: uses default mapping, configTree is null', () => {
-      const resolver = new appy.ConfigResolver();
-      const result = resolver.resolveConfig();
-      assert.equal(resolver.configTree, null);
-      // Default mapping includes EnvLoader which loads all env vars
-      assert.equal(typeof result, 'object');
+    it('no args: uses default treeless mapping with APP_ prefix', () => {
+      const saved = process.env.APP_TEST_DEFAULT;
+      process.env.APP_TEST_DEFAULT = 'found';
+      try {
+        const resolver = new appy.ConfigResolver();
+        const result = resolver.resolveConfig();
+        assert.equal(resolver.configTree, null);
+        assert.equal(result.testDefault, 'found');
+        // Non-prefixed env vars should not appear
+        assert.equal(result.home, undefined);
+        assert.equal(result.HOME, undefined);
+      } finally {
+        if (saved === undefined) delete process.env.APP_TEST_DEFAULT;
+        else process.env.APP_TEST_DEFAULT = saved;
+      }
+    });
+
+    it('configTree with no loaders: uses original default mapping', () => {
+      const saved = process.env.TEST_ORIG_DEFAULT;
+      process.env.TEST_ORIG_DEFAULT = 'env_val';
+      try {
+        const resolver = new appy.ConfigResolver();
+        const result = resolver.resolveConfig({
+          key: { default: 'def', env: 'TEST_ORIG_DEFAULT' }
+        });
+        assert.equal(result.key, 'env_val');
+      } finally {
+        if (saved === undefined) delete process.env.TEST_ORIG_DEFAULT;
+        else process.env.TEST_ORIG_DEFAULT = saved;
+      }
     });
 
     it('single loader arg: treats as resolveMaps', () => {
@@ -131,13 +155,13 @@ describe('No configTree usage', () => {
 
     it('constructor backward compat: boolean second arg', () => {
       const loader = new appy.DotenvLoader(missingFile, true);
-      assert.equal(loader.suppressExceptions, true);
+      assert.equal(loader.allowMissing, true);
       assert.doesNotThrow(() => loader.loadAllValues({}));
     });
 
     it('constructor with options object', () => {
-      const loader = new appy.DotenvLoader(envFile, { suppressExceptions: true, prefix: 'X_' });
-      assert.equal(loader.suppressExceptions, true);
+      const loader = new appy.DotenvLoader(envFile, { allowMissing: true, prefix: 'X_' });
+      assert.equal(loader.allowMissing, true);
       assert.equal(loader.prefix, 'X_');
     });
 
