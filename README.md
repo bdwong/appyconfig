@@ -8,20 +8,130 @@ Read and unify application configuration data from different sources.
 npm install appyconfig
 ```
 
-# Configuration
+# Usage
 
-1. Create a configuration tree in `config.js` that declares your configuration sources and options.
-2. Call `resolveConfig()` to resolve the configuration.
-3. Require/import your `config.js` wherever the config is needed.
+Call `resolveConfig()` with one or more loaders to gather configuration from different sources. Keys are automatically converted to camelCase.
 
-## Example
+## Basic Example
 
-In your lib/config.js:
+In `lib/config.js`:
+
+```js
+const { resolveConfig, EnvLoader } = require('appyconfig');
+
+// Read all environment variables starting with APP_ and strip the prefix.
+const config = resolveConfig([
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
+]);
+
+module.exports = config;
+```
+
+In `app.js`:
+
+```js
+const config = require('./lib/config');
+
+console.log(config.databaseHost); // "localhost"
+console.log(config.databasePort); // "5432"
+```
+
+Running your app:
+
+```sh
+APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
+```
+
+Without any arguments, `resolveConfig()` reads all environment variables:
+
+```js
+const config = resolveConfig();
+
+console.log(config.home); // e.g. "/home/user"
+```
+
+## Multiple Loaders
+
+Pass an array of loaders. Later loaders override earlier ones.
+
+In `lib/config.js`:
+
+```js
+const { resolveConfig, EnvLoader, DotenvLoader, JsonLoader, YamlLoader } = require('appyconfig');
+
+const config = resolveConfig([
+  new JsonLoader('config/defaults.json'),
+  new YamlLoader('config/local.yaml'),
+  new DotenvLoader('.env'),
+  new EnvLoader({ prefix: 'MYAPP_', stripPrefix: true })
+]);
+
+module.exports = config;
+```
+
+## Customizing Key Case
+
+By default, keys are converted to camelCase. Use the `ConfigResolver` class to change this.
+
+In `lib/config.js`:
+
+```js
+const { ConfigResolver, EnvLoader } = require('appyconfig');
+
+// Use snake_case keys
+const resolver = new ConfigResolver({ keyCase: 'snake_case' });
+const config = resolver.resolveConfig([
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
+]);
+
+// APP_DATABASE_HOST=localhost  =>  config.database_host
+```
+
+Available key cases: `camelCase`, `snake_case`, `kebab-case`, `PascalCase`, `CONSTANT_CASE`, `flatcase`.
+
+Set `keyCase` to `null` to leave keys as-is:
+
+```js
+const resolver = new ConfigResolver({ keyCase: null });
+```
+
+## Prefix Filtering
+
+`EnvLoader` and `DotenvLoader` accept `prefix` and `stripPrefix` options to select and rename keys:
+
+```js
+// Only read env vars starting with DB_, and remove the prefix
+new EnvLoader({ prefix: 'DB_', stripPrefix: true })
+// DB_HOST=localhost  =>  { host: "localhost" }  (after camelCase)
+
+// Only read matching keys from .env file
+new DotenvLoader('.env', { prefix: 'DB_', stripPrefix: true })
+```
+
+## Data Sources
+
+| Data source | Class | Notes |
+|--- |--- |--- |
+| Environment variables | EnvLoader | Options: `{ prefix, stripPrefix }` |
+| JSON file | JsonLoader | Supports JSONC (comments) |
+| YAML file | YamlLoader | |
+| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, suppressExceptions }` |
+| Command line arguments | CmdArgsLoader | See Commander section below |
+
+# Advanced Usage
+
+For more control over how each configuration key is resolved, you can define a **configuration tree** that maps each key to its data sources explicitly.
+
+## Configuration Tree
+
+1. Create a configuration tree that declares your configuration sources and options.
+2. Call `resolveConfig(configTree)` to resolve the configuration.
+
+In `lib/config.js`:
 
 ```js
 const { resolveConfig } = require('appyconfig');
 
-// Define default values and the environment variables that will override them.
 const config_tree = {
   "dbuser": {
     default: "root",
@@ -34,28 +144,20 @@ const config_tree = {
 
 const config = resolveConfig(config_tree);
 
-// Export your config.
 module.exports = config;
 ```
 
-Now require 'lib/config' from your app to get the global configuration.
+In `app.js`:
 
 ```js
-const config = require('lib/config');
+const config = require('./lib/config');
 
-console.log(`Using db user #{config.dbuser}.`);
+console.log(`Using db user ${config.dbuser}.`);
 ```
 
-## Data Sources
+When a configuration tree is provided, each loader looks for its own key in the tree. Key case conversion is not applied in this mode.
 
-Examples of data sources are:
-
-  - Hard coded default values
-  - Environment variables
-  - Command line arguments
-  - YAML or JSON configuration file
-
-Each of these data sources has a corresponding Loader class, and most have a key that will represent options in the configuration tree.
+### Loader Keys
 
 | Data source | Class | Key | Other considerations |
 |--- |--- |--- |--- |
@@ -82,30 +184,18 @@ See the ***Commander Example*** below.
 
 ### JSON files
 
-To read from JSON files, you will need to instantiate a new `ConfigResolver` and pass an instance of `JsonLoader`.
-The file will be read and the configuration will be merged in the order you provide to the ConfigResolver.
-
+Pass an instance of `JsonLoader` alongside your other loaders.
 You do not need to add anything to the configuration tree for JSON files.
 
-In `config.js`:
-
-```
+```js
 const config = resolveConfig(config_tree, [
-  new JsonLoader(filename) // file to read.
+  new JsonLoader(filename)
 ]);
-
-module.exports = config;
 ```
 
 ### YAML files
 
-Similar to JSON files, you will need to instantiate a new `ConfigResolver` and pass an instance of `YamlLoader`.
-
-## Configuration tree structure
-
-Appyconfig expects the configuration tree to be an object with properties, where
-each property name is the name of the configuration option and its value is
-an object containing the parameters to use for different data sources.
+Similar to JSON files, pass an instance of `YamlLoader`.
 
 ### Nested Values
 
@@ -113,9 +203,8 @@ If the value object itself contains objects, then it will be treated as a nested
 This is helpful for organizing your configuration.
 
 ```js
-// Nested values example
 const config_tree = {
-  "api": {  // api options
+  "api": {
     "api_key": {
       //...
     },
@@ -124,7 +213,7 @@ const config_tree = {
     }
   },
 
-  "db": {   // database options
+  "db": {
     "username": {
       //...
     },
@@ -162,7 +251,7 @@ In the configuration tree, configuration options can be set to values of any typ
 
 ## Customizing the Configuration Resolution Order
 
-By default when running `resolveConfig()`, appyconfig will use default config values (`DefaultValueLoader`) first, then override those values with environment variables (`EnvLoader`).
+By default when running `resolveConfig()` with a configuration tree, appyconfig will use default config values (`DefaultValueLoader`) first, then override those values with environment variables (`EnvLoader`).
 This is equivalent to the following code:
 
 ```js
@@ -178,23 +267,24 @@ You can choose to use different sources. For example, to fill the configuration 
 const config = resolveConfig(config_tree, [new NullLoader])
 ```
 
-## Dotenv
+## Dotenv with Configuration Tree
 
-You can load a specific `.env ` file and retrieve values in the same way that you retrieve environment variables.
+You can load a specific `.env` file and retrieve values using the `dotenv` key in your configuration tree.
+
+In `.env.production`:
 
 ```sh
-# dotenv file
 DB_USERNAME="MyUsername"
 DB_PASSWORD="secret"
 ```
 
-In your config.js:
+In `lib/config.js`:
 
 ```js
 const config = resolveConfig(config_tree, [new DotenvLoader("/approot/.env.production")]);
 ```
 
-And in your config tree:
+And in the config tree within `lib/config.js`:
 
 ```js
 const config_tree = {
@@ -207,7 +297,9 @@ const config_tree = {
 }
 ```
 
-If you are already parsing environment variables, you can instead load the dotenv file first, then continue to read environment variables with the '`env`' key. In config.js:
+If you are already parsing environment variables, you can instead load the dotenv file first, then continue to read environment variables with the '`env`' key.
+
+In `lib/config.js`:
 
 ```js
 const dotenv = require('dotenv').config();
@@ -221,7 +313,7 @@ This means the `Command` instance must be passed to `resolveCommander()` so that
 
 ### Commander Example
 
-In your `lib/config`:
+In `lib/config.js`:
 
 ```js
 const { ConfigResolver, DefaultValueLoader, EnvLoader, CmdArgsLoader } = require('appyconfig');
@@ -251,7 +343,7 @@ In `app.js`:
 
 ```js
 const { Command } = require('commander');
-const { resolveCommander } = require('lib/config');
+const { resolveCommander } = require('./lib/config');
 
 const program = new Command();
 resolveCommander(program);
@@ -264,10 +356,10 @@ program.action(() => {});
 program.parse(process.argv);
 ```
 
-Using the configuration:
+Using the configuration elsewhere, e.g. in `lib/server.js`:
 
 ```js
-const { config } = require('lib/config');
+const { config } = require('./config');
 
 console.log(`My setting: ${config.mysetting}`);
 ```
@@ -280,10 +372,12 @@ node app.js --my-setting updated
 
 ## Overlay Additional Configuration
 
-If you want to merge the resolved configuration object with another data source after the fact, you can call resolveConfig(), passing in the existing configuration object and a new data source. Depending on your data source, you may need a different configuration tree from the one you created in `lib/config.js`:
+If you want to merge the resolved configuration object with another data source after the fact, you can call resolveConfig(), passing in the existing configuration object and a new data source. Depending on your data source, you may need a different configuration tree from the one you created in `lib/config.js`.
+
+In `app.js`:
 
 ```js
-const config = require('lib/config');
+const config = require('./lib/config');
 const { program } = require('commander');
 
 // Grab a user configuration file from program arguments.
