@@ -240,7 +240,7 @@ In the configuration tree, configuration options can be set to values of any typ
       default: [
         { hostname: "localhost", port: 3425}
       ]
-    }
+    },
     migrations: {     // Array is itself enclosed in an array
       default: [
         ["20210103", "20210224"]
@@ -336,7 +336,7 @@ const config = resolver.resolveConfig(config_tree, [
   new CmdArgsLoader
 ]);
 
-module.exports = { config, resolveCommander: resolver.resolveCommander };
+module.exports = { config, resolveCommander: resolver.resolveCommander.bind(resolver) };
 ```
 
 In `app.js`:
