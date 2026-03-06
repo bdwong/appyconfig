@@ -4,6 +4,7 @@ const dotenv = require('dotenv');
 const { ValueLoader, copyKeyedMappingAssignmentStrategy } = require('./lib/valueLoader.js');
 const { FileLoader } = require('./lib/fileLoader.js');
 const yaml = require('js-yaml');
+const { convertKeys, CASE_CONVERTERS, splitKey, toCamelCase, toSnakeCase, toKebabCase, toPascalCase, toConstantCase, toFlatCase } = require('./lib/caseConverter.js');
 
 const stringType = new Object(),
   booleanType = new Object(),
@@ -81,6 +82,13 @@ class CmdArgsLoader extends ValueLoader {
       return value;
     }
   }
+
+  loadAllValues(valueTree) {
+    if (this.command == null) return valueTree;
+    const opts = this.command.opts();
+    Object.assign(valueTree, opts);
+    return valueTree;
+  }
 }
 
 /**
@@ -91,9 +99,11 @@ class CmdArgsLoader extends ValueLoader {
  * @returns value of the environment variable if it exists, otherwise value.
  */
 class EnvLoader extends ValueLoader {
-  constructor() {
+  constructor(options = {}) {
     super();
     this.mapKey = "env";
+    this.prefix = options.prefix || null;
+    this.stripPrefix = options.stripPrefix || false;
   }
 
   mapValue(cfg, value) {
@@ -102,6 +112,15 @@ class EnvLoader extends ValueLoader {
     } else {
       return value;
     }
+  }
+
+  loadAllValues(valueTree) {
+    for (const key of Object.keys(process.env)) {
+      if (this.prefix && !key.startsWith(this.prefix)) continue;
+      const outKey = (this.prefix && this.stripPrefix) ? key.slice(this.prefix.length) : key;
+      valueTree[outKey] = process.env[key];
+    }
+    return valueTree;
   }
 }
 
@@ -124,6 +143,10 @@ class JsonLoader extends FileLoader {
     return this.visitTree(this.fileData, valueTree);
   }
 
+  loadAllValues(valueTree) {
+    return this.loadValues(null, valueTree);
+  }
+
   mapValue(cfg, value) {
     if (cfg !== undefined) {
       return cfg;
@@ -134,11 +157,21 @@ class JsonLoader extends FileLoader {
 }
 
 class DotenvLoader extends FileLoader {
-  constructor(filename, suppressExceptions = false) {
+  constructor(filename, optionsOrSuppressExceptions = {}) {
     super(filename);
     this.mapKey = "dotenv";
-    this.suppressExceptions = suppressExceptions;
     this.assignmentStrategy = copyKeyedMappingAssignmentStrategy.bind(this);
+
+    if (typeof optionsOrSuppressExceptions === 'boolean') {
+      this.suppressExceptions = optionsOrSuppressExceptions;
+      this.prefix = null;
+      this.stripPrefix = false;
+    } else {
+      const options = optionsOrSuppressExceptions;
+      this.suppressExceptions = options.suppressExceptions || false;
+      this.prefix = options.prefix || null;
+      this.stripPrefix = options.stripPrefix || false;
+    }
   }
 
   loadValues(configTree, valueTree) {
@@ -151,6 +184,23 @@ class DotenvLoader extends FileLoader {
       this.fileData = {};
     }
     return this.visitTree(configTree, valueTree);
+  }
+
+  loadAllValues(valueTree) {
+    try {
+      this.fileData = dotenv.parse(readFileSync(this.filename));
+    } catch(e) {
+      if(!this.suppressExceptions) {
+        throw e;
+      }
+      this.fileData = {};
+    }
+    for (const key of Object.keys(this.fileData)) {
+      if (this.prefix && !key.startsWith(this.prefix)) continue;
+      const outKey = (this.prefix && this.stripPrefix) ? key.slice(this.prefix.length) : key;
+      valueTree[outKey] = this.fileData[key];
+    }
+    return valueTree;
   }
 
   mapValue(cfg, value) {
@@ -181,6 +231,10 @@ class YamlLoader extends FileLoader {
     return this.visitTree(this.fileData, valueTree);
   }
 
+  loadAllValues(valueTree) {
+    return this.loadValues(null, valueTree);
+  }
+
   mapValue(cfg, value) {
     if (cfg !== undefined) {
       return cfg;
@@ -202,21 +256,41 @@ const DEFAULT_MAPPING = [new DefaultValueLoader(), new EnvLoader()];
  * Class to encapsulate the configuration resolution logic for easier testing.
  */
 class ConfigResolver {
-  constructor() {
+  constructor(options = {}) {
     this.resolveMaps = [];
-    this.configTree = {};
+    this.configTree = null;
     this.valueTree = null;
+    this.keyCase = options.keyCase !== undefined ? options.keyCase : 'camelCase';
   }
 
   /**
    * @description Gathers app configuration from various sources and
    *    presents them as a single hash.
-   * @param {Object} configTree
-   * @param {Array} resolveMaps - array of Loader instances.
-   * @param {Object} valueTree - initial value of the config object, defaults to an empty object.
-   * @returns configuration values resolved from different sources.
+   *
+   * Supports multiple calling conventions:
+   *   resolveConfig(configTree, resolveMaps, valueTree) — original
+   *   resolveConfig(resolveMaps, valueTree)             — no configTree
+   *   resolveConfig(resolveMaps)                        — no configTree, default valueTree
+   *   resolveConfig()                                   — no configTree, default mapping
    */
-  resolveConfig(configTree, resolveMaps = DEFAULT_MAPPING, valueTree = {}) {
+  resolveConfig(...args) {
+    let configTree = null;
+    let resolveMaps = DEFAULT_MAPPING;
+    let valueTree = {};
+
+    if (args.length === 0) {
+      // No args: no configTree, default mapping
+    } else if (this._isResolveMaps(args[0])) {
+      // First arg is loaders — no configTree
+      resolveMaps = args[0];
+      if (args[1] !== undefined) valueTree = args[1];
+    } else {
+      // First arg is configTree (plain object) — original behavior
+      configTree = args[0];
+      if (args[1] !== undefined) resolveMaps = args[1];
+      if (args[2] !== undefined) valueTree = args[2];
+    }
+
     if (!Array.isArray(resolveMaps)) {
       resolveMaps = [resolveMaps]
     }
@@ -224,16 +298,41 @@ class ConfigResolver {
     this.resolveMaps = resolveMaps;
     this.configTree = configTree;
 
-    valueTree = resolveMaps.reduce( (innerValueTree, mapping) => {
-      if (!(mapping instanceof ValueLoader)) {
-        throw new Error("Mapping is not a ValueLoader instance.")
+    if (configTree === null) {
+      // No configTree path: use loadAllValues
+      valueTree = resolveMaps.reduce( (innerValueTree, mapping) => {
+        if (!(mapping instanceof ValueLoader)) {
+          throw new Error("Mapping is not a ValueLoader instance.")
+        }
+        innerValueTree = mapping.loadAllValues(innerValueTree);
+        return innerValueTree;
+      }, valueTree);
+
+      if (this.keyCase) {
+        const converter = CASE_CONVERTERS[this.keyCase];
+        if (converter) {
+          valueTree = convertKeys(valueTree, converter);
+        }
       }
-      innerValueTree = mapping.loadValues(configTree, innerValueTree);
-      return innerValueTree;
-    }, valueTree);
+    } else {
+      // Original configTree path: use loadValues
+      valueTree = resolveMaps.reduce( (innerValueTree, mapping) => {
+        if (!(mapping instanceof ValueLoader)) {
+          throw new Error("Mapping is not a ValueLoader instance.")
+        }
+        innerValueTree = mapping.loadValues(configTree, innerValueTree);
+        return innerValueTree;
+      }, valueTree);
+    }
 
     this.valueTree = valueTree;
     return valueTree ?? {};
+  }
+
+  _isResolveMaps(arg) {
+    if (arg instanceof ValueLoader) return true;
+    if (Array.isArray(arg) && (arg.length === 0 || arg[0] instanceof ValueLoader)) return true;
+    return false;
   }
 
   resolveCommander(commandInstance) {
@@ -254,11 +353,19 @@ class ConfigResolver {
       }
 
       cmdArgsLoader.setCommand(thisCommand);
-      this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
+      if (this.configTree === null) {
+        this.valueTree = cmdArgsLoader.loadAllValues(this.valueTree);
+      } else {
+        this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
+      }
 
       if (thisCommand !== actionCommand) {
         cmdArgsLoader.setCommand(actionCommand);
-        this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
+        if (this.configTree === null) {
+          this.valueTree = cmdArgsLoader.loadAllValues(this.valueTree);
+        } else {
+          this.valueTree = cmdArgsLoader.loadValues(this.configTree, this.valueTree);
+        }
       }
     })
   }
@@ -272,5 +379,7 @@ module.exports = {
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
   DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader,
   JsonLoader, DotenvLoader, YamlLoader,
-  stringType, booleanType, intType
+  stringType, booleanType, intType,
+  convertKeys, CASE_CONVERTERS,
+  splitKey, toCamelCase, toSnakeCase, toKebabCase, toPascalCase, toConstantCase, toFlatCase,
 }
