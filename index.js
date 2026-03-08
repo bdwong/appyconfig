@@ -128,15 +128,7 @@ class EnvLoader extends ValueLoader {
 
 class JsonLoader extends FileLoader {
   constructor(filename, optionsOrSuppressExceptions = false) {
-    super(filename);
-    if (typeof optionsOrSuppressExceptions === 'boolean') {
-      this.suppressExceptions = optionsOrSuppressExceptions;
-      this.allowMissing = false;
-    } else {
-      const options = optionsOrSuppressExceptions;
-      this.suppressExceptions = options.suppressExceptions || false;
-      this.allowMissing = options.allowMissing || false;
-    }
+    super(filename, optionsOrSuppressExceptions);
   }
 
   loadValues(_configTree, valueTree) {
@@ -168,19 +160,15 @@ class JsonLoader extends FileLoader {
 
 class DotenvLoader extends FileLoader {
   constructor(filename, optionsOrSuppressExceptions = {}) {
-    super(filename);
+    super(filename, optionsOrSuppressExceptions);
     this.mapKey = "dotenv";
     this.assignmentStrategy = copyKeyedMappingAssignmentStrategy.bind(this);
 
     if (typeof optionsOrSuppressExceptions === 'boolean') {
-      this.suppressExceptions = optionsOrSuppressExceptions;
-      this.allowMissing = false;
       this.prefix = null;
       this.stripPrefix = false;
     } else {
       const options = optionsOrSuppressExceptions;
-      this.suppressExceptions = options.suppressExceptions || false;
-      this.allowMissing = options.allowMissing || false;
       this.prefix = options.prefix || null;
       this.stripPrefix = options.stripPrefix || false;
     }
@@ -228,15 +216,7 @@ class DotenvLoader extends FileLoader {
 
 class YamlLoader extends FileLoader {
   constructor(filename, optionsOrSuppressExceptions = false) {
-    super(filename);
-    if (typeof optionsOrSuppressExceptions === 'boolean') {
-      this.suppressExceptions = optionsOrSuppressExceptions;
-      this.allowMissing = false;
-    } else {
-      const options = optionsOrSuppressExceptions;
-      this.suppressExceptions = options.suppressExceptions || false;
-      this.allowMissing = options.allowMissing || false;
-    }
+    super(filename, optionsOrSuppressExceptions);
   }
 
   loadValues(_configTree, valueTree) {
