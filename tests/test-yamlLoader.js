@@ -49,8 +49,13 @@ describe('YamlLoader', () => {
     assert.throws(() => loader.loadValues({}, {}));
   });
 
-  it('throws on malformed YAML even with allowMissing', () => {
+  it('suppresses exception on malformed YAML with suppressExceptions flag', () => {
     const loader = new YamlLoader(malformedFile, true);
+    assert.doesNotThrow(() => loader.loadValues({}, {}));
+  });
+
+  it('throws on malformed YAML with only allowMissing', () => {
+    const loader = new YamlLoader(malformedFile, { allowMissing: true });
     assert.throws(() => loader.loadValues({}, {}));
   });
 });

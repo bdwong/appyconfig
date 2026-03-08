@@ -39,11 +39,11 @@ Running your app:
 APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
 ```
 
-The defaults look for `config.json` and `.env` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), then read `APP_`-prefixed environment variables. Both files are optional and silently skipped if missing. This is equivalent to:
+The defaults look for `config.json` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), `.env` in your current working directory, and `APP_`-prefixed environment variables. Both files are optional and silently skipped if missing. This is equivalent to:
 
 ```js
 const config = resolveConfig([
-  new JsonLoader('config.json', true),  // allowMissing
+  new JsonLoader('config.json', { allowMissing: true }),
   new DotenvLoader('.env', { allowMissing: true }),
   new EnvLoader({ prefix: 'APP_', stripPrefix: true })
 ]);
@@ -114,7 +114,7 @@ new DotenvLoader('.env', { prefix: 'DB_', stripPrefix: true })
 | Environment variables | EnvLoader | Options: `{ prefix, stripPrefix }` |
 | JSON file | JsonLoader | Supports JSONC (comments) |
 | YAML file | YamlLoader | |
-| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, allowMissing }` |
+| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, allowMissing, suppressExceptions }` |
 | Command line arguments | CmdArgsLoader | See Commander section below |
 
 # Advanced Usage

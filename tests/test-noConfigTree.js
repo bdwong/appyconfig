@@ -153,15 +153,16 @@ describe('No configTree usage', () => {
       assert.equal(result.ENVKEY2, '1234');
     });
 
-    it('constructor backward compat: boolean second arg', () => {
+    it('constructor backward compat: boolean second arg sets suppressExceptions', () => {
       const loader = new appy.DotenvLoader(missingFile, true);
-      assert.equal(loader.allowMissing, true);
+      assert.equal(loader.suppressExceptions, true);
       assert.doesNotThrow(() => loader.loadAllValues({}));
     });
 
-    it('constructor with options object', () => {
-      const loader = new appy.DotenvLoader(envFile, { allowMissing: true, prefix: 'X_' });
+    it('constructor with options object supports both allowMissing and suppressExceptions', () => {
+      const loader = new appy.DotenvLoader(envFile, { allowMissing: true, suppressExceptions: true, prefix: 'X_' });
       assert.equal(loader.allowMissing, true);
+      assert.equal(loader.suppressExceptions, true);
       assert.equal(loader.prefix, 'X_');
     });
 

@@ -127,16 +127,29 @@ class EnvLoader extends ValueLoader {
 }
 
 class JsonLoader extends FileLoader {
-  constructor(filename, allowMissing = false) {
+  constructor(filename, optionsOrSuppressExceptions = false) {
     super(filename);
-    this.allowMissing = allowMissing;
+    if (typeof optionsOrSuppressExceptions === 'boolean') {
+      this.suppressExceptions = optionsOrSuppressExceptions;
+      this.allowMissing = false;
+    } else {
+      const options = optionsOrSuppressExceptions;
+      this.suppressExceptions = options.suppressExceptions || false;
+      this.allowMissing = options.allowMissing || false;
+    }
+  }
+
+  _shouldSuppress(e) {
+    if (this.allowMissing && e.code === 'ENOENT') return true;
+    if (this.suppressExceptions) return true;
+    return false;
   }
 
   loadValues(_configTree, valueTree) {
     try {
       this.fileData = parseJsonc(readFileSync(this.filename).toString());
     } catch(e) {
-      if(this.allowMissing && e.code === 'ENOENT') {
+      if(this._shouldSuppress(e)) {
         this.fileData = {};
       } else {
         console.log(`exception: ${e}`);
@@ -160,28 +173,36 @@ class JsonLoader extends FileLoader {
 }
 
 class DotenvLoader extends FileLoader {
-  constructor(filename, optionsOrAllowMissing = {}) {
+  constructor(filename, optionsOrSuppressExceptions = {}) {
     super(filename);
     this.mapKey = "dotenv";
     this.assignmentStrategy = copyKeyedMappingAssignmentStrategy.bind(this);
 
-    if (typeof optionsOrAllowMissing === 'boolean') {
-      this.allowMissing = optionsOrAllowMissing;
+    if (typeof optionsOrSuppressExceptions === 'boolean') {
+      this.suppressExceptions = optionsOrSuppressExceptions;
+      this.allowMissing = false;
       this.prefix = null;
       this.stripPrefix = false;
     } else {
-      const options = optionsOrAllowMissing;
+      const options = optionsOrSuppressExceptions;
+      this.suppressExceptions = options.suppressExceptions || false;
       this.allowMissing = options.allowMissing || false;
       this.prefix = options.prefix || null;
       this.stripPrefix = options.stripPrefix || false;
     }
   }
 
+  _shouldSuppress(e) {
+    if (this.allowMissing && e.code === 'ENOENT') return true;
+    if (this.suppressExceptions) return true;
+    return false;
+  }
+
   loadValues(configTree, valueTree) {
     try {
       this.fileData = dotenv.parse(readFileSync(this.filename));
     } catch(e) {
-      if(this.allowMissing && e.code === 'ENOENT') {
+      if(this._shouldSuppress(e)) {
         this.fileData = {};
       } else {
         throw e;
@@ -194,7 +215,7 @@ class DotenvLoader extends FileLoader {
     try {
       this.fileData = dotenv.parse(readFileSync(this.filename));
     } catch(e) {
-      if(this.allowMissing && e.code === 'ENOENT') {
+      if(this._shouldSuppress(e)) {
         this.fileData = {};
       } else {
         throw e;
@@ -218,16 +239,29 @@ class DotenvLoader extends FileLoader {
 }
 
 class YamlLoader extends FileLoader {
-  constructor(filename, allowMissing = false) {
+  constructor(filename, optionsOrSuppressExceptions = false) {
     super(filename);
-    this.allowMissing = allowMissing;
+    if (typeof optionsOrSuppressExceptions === 'boolean') {
+      this.suppressExceptions = optionsOrSuppressExceptions;
+      this.allowMissing = false;
+    } else {
+      const options = optionsOrSuppressExceptions;
+      this.suppressExceptions = options.suppressExceptions || false;
+      this.allowMissing = options.allowMissing || false;
+    }
+  }
+
+  _shouldSuppress(e) {
+    if (this.allowMissing && e.code === 'ENOENT') return true;
+    if (this.suppressExceptions) return true;
+    return false;
   }
 
   loadValues(_configTree, valueTree) {
     try {
       this.fileData = yaml.load(readFileSync(this.filename).toString(), 'utf8');
     } catch(e) {
-      if(this.allowMissing && e.code === 'ENOENT') {
+      if(this._shouldSuppress(e)) {
         this.fileData = {};
       } else {
         console.log(`exception: ${e}`);
@@ -258,7 +292,7 @@ class ValidationLoader extends ValueLoader {
 
 const DEFAULT_MAPPING = [new DefaultValueLoader(), new EnvLoader()];
 const DEFAULT_TREELESS_MAPPING = [
-  new JsonLoader(path.join(appRootPath.toString(), 'config.json'), true),
+  new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
   new DotenvLoader('.env', { allowMissing: true }),
   new EnvLoader({ prefix: 'APP_', stripPrefix: true })
 ];
