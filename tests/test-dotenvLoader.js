@@ -65,4 +65,42 @@ describe('DotenvLoader', () => {
     assert.notEqual(loader.fileData, null);
     assert.equal(loader.fileData['TEST_ENVKEY'], 'myenv value');
   });
+
+  describe('expand option', () => {
+    it('expand defaults to true', () => {
+      const loader = new DotenvLoader(envFile);
+      assert.equal(loader.expand, true);
+    });
+
+    it('expand defaults to true when boolean arg is passed', () => {
+      const loader = new DotenvLoader(envFile, true);
+      assert.equal(loader.expand, true);
+    });
+
+    it('__ in key creates nested object', () => {
+      const loader = new DotenvLoader(envFile);
+      const result = loader.loadAllValues({});
+      assert.deepEqual(result.TEST_NESTED, { LEVEL1: { LEVEL2: 'deep_value' } });
+    });
+
+    it('keys without __ remain flat', () => {
+      const loader = new DotenvLoader(envFile);
+      const result = loader.loadAllValues({});
+      assert.equal(result.TEST_FLAT_KEY, 'flat_value');
+    });
+
+    it('expand: false disables nesting', () => {
+      const loader = new DotenvLoader(envFile, { expand: false });
+      const result = loader.loadAllValues({});
+      assert.equal(result['TEST_NESTED__LEVEL1__LEVEL2'], 'deep_value');
+      assert.equal(result.TEST_NESTED, undefined);
+    });
+
+    it('works with prefix + stripPrefix', () => {
+      const loader = new DotenvLoader(envFile, { prefix: 'TEST_', stripPrefix: true });
+      const result = loader.loadAllValues({});
+      assert.deepEqual(result.NESTED, { LEVEL1: { LEVEL2: 'deep_value' } });
+      assert.equal(result.FLAT_KEY, 'flat_value');
+    });
+  });
 });

@@ -76,4 +76,61 @@ describe('EnvLoader', () => {
     }, { a: 'original' });
     assert.deepEqual(result, { a: 'original' });
   });
+
+  describe('expand option', () => {
+    const expandVars = ['APP_DATABASE__HOST', 'APP_DATABASE__PORT', 'APP_A__B__C', 'APP_FLAT'];
+
+    beforeEach(() => {
+      expandVars.forEach(v => { savedEnv[v] = process.env[v]; delete process.env[v]; });
+    });
+
+    afterEach(() => {
+      expandVars.forEach(v => {
+        if (savedEnv[v] === undefined) delete process.env[v];
+        else process.env[v] = savedEnv[v];
+      });
+    });
+
+    it('expand defaults to true', () => {
+      const loader = new EnvLoader();
+      assert.equal(loader.expand, true);
+    });
+
+    it('__ in key creates nested object', () => {
+      process.env.APP_DATABASE__HOST = 'myhost';
+      const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+      const result = loader.loadAllValues({});
+      assert.deepEqual(result.DATABASE, { HOST: 'myhost' });
+    });
+
+    it('multiple levels of nesting with __', () => {
+      process.env.APP_A__B__C = 'deep';
+      const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+      const result = loader.loadAllValues({});
+      assert.deepEqual(result.A, { B: { C: 'deep' } });
+    });
+
+    it('keys without __ remain flat', () => {
+      process.env.APP_FLAT = 'value';
+      const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+      const result = loader.loadAllValues({});
+      assert.equal(result.FLAT, 'value');
+    });
+
+    it('expand: false disables nesting', () => {
+      process.env.APP_DATABASE__HOST = 'myhost';
+      const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true, expand: false });
+      const result = loader.loadAllValues({});
+      assert.equal(result['DATABASE__HOST'], 'myhost');
+      assert.equal(result.DATABASE, undefined);
+    });
+
+    it('works with prefix + stripPrefix', () => {
+      process.env.APP_DATABASE__HOST = 'myhost';
+      process.env.APP_DATABASE__PORT = '5432';
+      const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+      const result = loader.loadAllValues({});
+      assert.deepEqual(result.DATABASE, { HOST: 'myhost', PORT: '5432' });
+    });
+  });
 });

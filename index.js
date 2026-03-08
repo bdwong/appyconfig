@@ -14,6 +14,17 @@ const stringType = new Object(),
 
 class NotImplementedError extends Error {}
 
+function setNestedValue(obj, keys, value) {
+  let current = obj;
+  for (let i = 0; i < keys.length - 1; i++) {
+    if (current[keys[i]] === undefined || typeof current[keys[i]] !== 'object') {
+      current[keys[i]] = {};
+    }
+    current = current[keys[i]];
+  }
+  current[keys[keys.length - 1]] = value;
+}
+
 
 /**
  * @description Simplest mapping possible. Values are always overwritten as null.
@@ -106,6 +117,7 @@ class EnvLoader extends ValueLoader {
     this.mapKey = "env";
     this.prefix = options.prefix || null;
     this.stripPrefix = options.stripPrefix || false;
+    this.expand = options.expand !== undefined ? options.expand : true;
   }
 
   mapValue(cfg, value) {
@@ -120,7 +132,11 @@ class EnvLoader extends ValueLoader {
     for (const key of Object.keys(process.env)) {
       if (this.prefix && !key.startsWith(this.prefix)) continue;
       const outKey = (this.prefix && this.stripPrefix) ? key.slice(this.prefix.length) : key;
-      valueTree[outKey] = process.env[key];
+      if (this.expand && outKey.includes('__')) {
+        setNestedValue(valueTree, outKey.split('__'), process.env[key]);
+      } else {
+        valueTree[outKey] = process.env[key];
+      }
     }
     return valueTree;
   }
@@ -167,10 +183,12 @@ class DotenvLoader extends FileLoader {
     if (typeof optionsOrSuppressExceptions === 'boolean') {
       this.prefix = null;
       this.stripPrefix = false;
+      this.expand = true;
     } else {
       const options = optionsOrSuppressExceptions;
       this.prefix = options.prefix || null;
       this.stripPrefix = options.stripPrefix || false;
+      this.expand = options.expand !== undefined ? options.expand : true;
     }
   }
 
@@ -200,7 +218,11 @@ class DotenvLoader extends FileLoader {
     for (const key of Object.keys(this.fileData)) {
       if (this.prefix && !key.startsWith(this.prefix)) continue;
       const outKey = (this.prefix && this.stripPrefix) ? key.slice(this.prefix.length) : key;
-      valueTree[outKey] = this.fileData[key];
+      if (this.expand && outKey.includes('__')) {
+        setNestedValue(valueTree, outKey.split('__'), this.fileData[key]);
+      } else {
+        valueTree[outKey] = this.fileData[key];
+      }
     }
     return valueTree;
   }

@@ -94,6 +94,39 @@ Set `keyCase` to `null` to leave keys as-is:
 const resolver = new ConfigResolver({ keyCase: null });
 ```
 
+## Nested Keys via `__`
+
+Use double underscores (`__`) in environment variable names or `.env` keys to create nested configuration objects. This is enabled by default.
+
+```sh
+APP_DATABASE__HOST=localhost APP_DATABASE__PORT=5432 node app.js
+```
+
+```js
+const config = resolveConfig([
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
+]);
+
+console.log(config.database.host); // "localhost"
+console.log(config.database.port); // "5432"
+```
+
+Multiple levels work too: `APP_A__B__C=value` becomes `{ a: { b: { c: 'value' } } }` (after camelCase conversion).
+
+To disable expansion, set `expand: false`:
+
+```js
+new EnvLoader({ prefix: 'APP_', stripPrefix: true, expand: false })
+// APP_DATABASE__HOST=localhost  =>  { databaseHost: "localhost" }
+```
+
+The `expand` option works the same way on `DotenvLoader`:
+
+```js
+new DotenvLoader('.env', { prefix: 'APP_', stripPrefix: true })
+// APP_DB__HOST=localhost in .env  =>  { db: { host: "localhost" } }
+```
+
 ## Prefix Filtering
 
 `EnvLoader` and `DotenvLoader` accept `prefix` and `stripPrefix` options to select and rename keys:
@@ -111,10 +144,10 @@ new DotenvLoader('.env', { prefix: 'DB_', stripPrefix: true })
 
 | Data source | Class | Notes |
 |--- |--- |--- |
-| Environment variables | EnvLoader | Options: `{ prefix, stripPrefix }` |
+| Environment variables | EnvLoader | Options: `{ prefix, stripPrefix, expand }` |
 | JSON file | JsonLoader | Supports JSONC (comments) |
 | YAML file | YamlLoader | |
-| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, allowMissing, suppressExceptions }` |
+| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, expand, allowMissing, suppressExceptions }` |
 | Command line arguments | CmdArgsLoader | See Commander section below |
 
 # Advanced Usage

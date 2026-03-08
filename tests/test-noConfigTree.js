@@ -345,6 +345,52 @@ describe('No configTree usage', () => {
     });
   });
 
+  describe('nested key expansion via __', () => {
+    const savedEnv = {};
+    const testVars = ['APP_DATABASE__HOST', 'APP_DATABASE__PORT', 'APP_LOG_LEVEL'];
+
+    beforeEach(() => {
+      testVars.forEach(v => { savedEnv[v] = process.env[v]; delete process.env[v]; });
+      process.env.APP_DATABASE__HOST = 'localhost';
+      process.env.APP_DATABASE__PORT = '5432';
+      process.env.APP_LOG_LEVEL = 'info';
+    });
+
+    afterEach(() => {
+      testVars.forEach(v => {
+        if (savedEnv[v] === undefined) delete process.env[v];
+        else process.env[v] = savedEnv[v];
+      });
+    });
+
+    it('EnvLoader with expand + camelCase produces nested camelCase keys', () => {
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig([
+        new appy.EnvLoader({ prefix: 'APP_', stripPrefix: true })
+      ]);
+      assert.deepEqual(result.database, { host: 'localhost', port: '5432' });
+      assert.equal(result.logLevel, 'info');
+    });
+
+    it('DotenvLoader with expand + camelCase produces nested camelCase keys', () => {
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig([
+        new appy.DotenvLoader(path.join(__dirname, 'test.env'), { prefix: 'TEST_', stripPrefix: true })
+      ]);
+      assert.deepEqual(result.nested, { level1: { level2: 'deep_value' } });
+      assert.equal(result.flatKey, 'flat_value');
+    });
+
+    it('expand: false keeps __ keys flat', () => {
+      const resolver = new appy.ConfigResolver({ keyCase: null });
+      const result = resolver.resolveConfig([
+        new appy.EnvLoader({ prefix: 'APP_', stripPrefix: true, expand: false })
+      ]);
+      assert.equal(result['DATABASE__HOST'], 'localhost');
+      assert.equal(result.DATABASE, undefined);
+    });
+  });
+
   describe('exports', () => {
     it('case converter functions are exported', () => {
       assert.equal(typeof appy.convertKeys, 'function');
