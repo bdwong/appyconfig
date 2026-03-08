@@ -1,4 +1,4 @@
-const { describe, it } = require('test');
+const { describe, it, mock } = require('test');
 const assert = require('node:assert/strict');
 const {
   splitKey, toCamelCase, toSnakeCase, toKebabCase,
@@ -167,6 +167,21 @@ describe('caseConverter', () => {
       assert.deepEqual(result, {
         levelOne: { levelTwo: { levelThree: 'deep' } }
       });
+    });
+
+    it('warns when case conversion causes key collision', () => {
+      const warnMock = mock.method(console, 'warn', () => {});
+      try {
+        const result = convertKeys({ A: { B: 'Value 1', b: 'Value 2' } }, toCamelCase);
+        // Last-write-wins: "b" → "b" overwrites "B" → "b"
+        assert.deepEqual(result, { a: { b: 'Value 2' } });
+        assert.equal(warnMock.mock.callCount() > 0, true);
+        const msg = warnMock.mock.calls[0].arguments[0];
+        assert.match(msg, /collision/);
+        assert.match(msg, /"b"/);
+      } finally {
+        warnMock.mock.restore();
+      }
     });
   });
 });
