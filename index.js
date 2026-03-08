@@ -139,12 +139,6 @@ class JsonLoader extends FileLoader {
     }
   }
 
-  _shouldSuppress(e) {
-    if (this.allowMissing && e.code === 'ENOENT') return true;
-    if (this.suppressExceptions) return true;
-    return false;
-  }
-
   loadValues(_configTree, valueTree) {
     try {
       this.fileData = parseJsonc(readFileSync(this.filename).toString());
@@ -190,12 +184,6 @@ class DotenvLoader extends FileLoader {
       this.prefix = options.prefix || null;
       this.stripPrefix = options.stripPrefix || false;
     }
-  }
-
-  _shouldSuppress(e) {
-    if (this.allowMissing && e.code === 'ENOENT') return true;
-    if (this.suppressExceptions) return true;
-    return false;
   }
 
   loadValues(configTree, valueTree) {
@@ -249,12 +237,6 @@ class YamlLoader extends FileLoader {
       this.suppressExceptions = options.suppressExceptions || false;
       this.allowMissing = options.allowMissing || false;
     }
-  }
-
-  _shouldSuppress(e) {
-    if (this.allowMissing && e.code === 'ENOENT') return true;
-    if (this.suppressExceptions) return true;
-    return false;
   }
 
   loadValues(_configTree, valueTree) {
