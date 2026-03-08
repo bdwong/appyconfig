@@ -1,4 +1,4 @@
-const { describe, it } = require('test');
+const { describe, it, mock } = require('test');
 const assert = require('node:assert/strict');
 const path = require('path');
 const { DotenvLoader } = require('../index');
@@ -101,6 +101,19 @@ describe('DotenvLoader', () => {
       const result = loader.loadAllValues({});
       assert.deepEqual(result.NESTED, { LEVEL1: { LEVEL2: 'deep_value' } });
       assert.equal(result.FLAT_KEY, 'flat_value');
+    });
+
+    it('empty key segment (____) warns and is skipped', () => {
+      const warnMock = mock.method(console, 'warn', () => {});
+      try {
+        const loader = new DotenvLoader(envFile);
+        const result = loader.loadAllValues({});
+        assert.equal(result.TEST_EMPTY, undefined);
+        assert.equal(result['TEST_EMPTY____SEG'], undefined);
+        assert.equal(warnMock.mock.callCount() > 0, true);
+      } finally {
+        warnMock.mock.restore();
+      }
     });
   });
 });

@@ -14,7 +14,11 @@ const stringType = new Object(),
 
 class NotImplementedError extends Error {}
 
-function setNestedValue(obj, keys, value) {
+function setNestedValue(obj, keys, value, originalKey) {
+  if (keys.some(k => k === '')) {
+    console.warn(`appyconfig: skipping key "${originalKey}" — nested expansion produced an empty key segment`);
+    return;
+  }
   let current = obj;
   for (let i = 0; i < keys.length - 1; i++) {
     if (current[keys[i]] === undefined || typeof current[keys[i]] !== 'object') {
@@ -133,7 +137,7 @@ class EnvLoader extends ValueLoader {
       if (this.prefix && !key.startsWith(this.prefix)) continue;
       const outKey = (this.prefix && this.stripPrefix) ? key.slice(this.prefix.length) : key;
       if (this.expand && outKey.includes('__')) {
-        setNestedValue(valueTree, outKey.split('__'), process.env[key]);
+        setNestedValue(valueTree, outKey.split('__'), process.env[key], outKey);
       } else {
         valueTree[outKey] = process.env[key];
       }
@@ -219,7 +223,7 @@ class DotenvLoader extends FileLoader {
       if (this.prefix && !key.startsWith(this.prefix)) continue;
       const outKey = (this.prefix && this.stripPrefix) ? key.slice(this.prefix.length) : key;
       if (this.expand && outKey.includes('__')) {
-        setNestedValue(valueTree, outKey.split('__'), this.fileData[key]);
+        setNestedValue(valueTree, outKey.split('__'), this.fileData[key], outKey);
       } else {
         valueTree[outKey] = this.fileData[key];
       }

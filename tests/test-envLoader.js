@@ -1,4 +1,4 @@
-const { describe, it, beforeEach, afterEach } = require('test');
+const { describe, it, beforeEach, afterEach, mock } = require('test');
 const assert = require('node:assert/strict');
 const { EnvLoader } = require('../index');
 
@@ -131,6 +131,51 @@ describe('EnvLoader', () => {
       const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
       const result = loader.loadAllValues({});
       assert.deepEqual(result.DATABASE, { HOST: 'myhost', PORT: '5432' });
+    });
+
+    it('A____B (four underscores) warns and is skipped', () => {
+      process.env.APP_A____B = 'val';
+      const warnMock = mock.method(console, 'warn', () => {});
+      try {
+        const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+        const result = loader.loadAllValues({});
+        assert.equal(result.A, undefined);
+        assert.equal(result['A____B'], undefined);
+        assert.equal(warnMock.mock.callCount() > 0, true);
+      } finally {
+        warnMock.mock.restore();
+        delete process.env.APP_A____B;
+      }
+    });
+
+    it('leading __ warns and is skipped', () => {
+      process.env.APP___X = 'val';
+      const warnMock = mock.method(console, 'warn', () => {});
+      try {
+        const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+        const result = loader.loadAllValues({});
+        assert.equal(result.X, undefined);
+        assert.equal(result['__X'], undefined);
+        assert.equal(warnMock.mock.callCount() > 0, true);
+      } finally {
+        warnMock.mock.restore();
+        delete process.env.APP___X;
+      }
+    });
+
+    it('trailing __ warns and is skipped', () => {
+      process.env.APP_X__ = 'val';
+      const warnMock = mock.method(console, 'warn', () => {});
+      try {
+        const loader = new EnvLoader({ prefix: 'APP_', stripPrefix: true });
+        const result = loader.loadAllValues({});
+        assert.equal(result.X, undefined);
+        assert.equal(result['X__'], undefined);
+        assert.equal(warnMock.mock.callCount() > 0, true);
+      } finally {
+        warnMock.mock.restore();
+        delete process.env.APP_X__;
+      }
     });
   });
 });
