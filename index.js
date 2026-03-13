@@ -276,6 +276,184 @@ class YamlLoader extends FileLoader {
   }
 }
 
+class ArgvLoader extends ValueLoader {
+  constructor(options = {}) {
+    super();
+    this.mapKey = 'argv';
+    this.aliases = options.aliases || {};
+    this.parsed = false;
+    this.argv = {};
+  }
+
+  _getNestedValue(obj, keys) {
+    let current = obj;
+    for (const key of keys) {
+      if (current === undefined || current === null || typeof current !== 'object') return undefined;
+      current = current[key];
+    }
+    return current;
+  }
+
+  _parse(valueTree) {
+    if (this.parsed) return;
+    this.parsed = true;
+
+    const args = process.argv;
+    const consumedIndices = new Set();
+    let i = 2;
+
+    while (i < args.length) {
+      const arg = args[i];
+
+      // Bare -- sentinel: stop parsing, consume it
+      if (arg === '--') {
+        consumedIndices.add(i);
+        break;
+      }
+
+      // Single-dash option
+      if (arg.startsWith('-') && !arg.startsWith('--')) {
+        if (this.aliases[arg]) {
+          // Expand alias and reprocess as long form
+          const expanded = this.aliases[arg];
+          // Replace in-place for processing, but track original index
+          consumedIndices.add(i);
+          i++;
+          // Process expanded form
+          const optName = expanded.replace(/^--/, '');
+          const pathSegments = optName.split('--');
+          const existingValue = pathSegments.length > 1
+            ? this._getNestedValue(valueTree, pathSegments)
+            : valueTree[optName];
+
+          let value;
+          if (typeof existingValue === 'boolean') {
+            value = true;
+          } else if (i < args.length && !args[i].startsWith('-')) {
+            value = args[i];
+            consumedIndices.add(i);
+            i++;
+          } else {
+            value = true;
+          }
+
+          if (pathSegments.length > 1) {
+            setNestedValue(this.argv, pathSegments, value, optName);
+          } else {
+            this.argv[optName] = value;
+          }
+          continue;
+        } else {
+          console.warn(`appyconfig: unrecognized short option "${arg}" — ignoring`);
+          i++;
+          continue;
+        }
+      }
+
+      // Long-form option
+      if (arg.startsWith('--')) {
+        consumedIndices.add(i);
+        let optName, inlineValue;
+
+        const eqIndex = arg.indexOf('=');
+        if (eqIndex !== -1) {
+          optName = arg.slice(2, eqIndex);
+          inlineValue = arg.slice(eqIndex + 1);
+        } else {
+          optName = arg.slice(2);
+          inlineValue = undefined;
+        }
+
+        // Check no- prefix negation
+        let isNegation = false;
+        let resolvedName = optName;
+        if (optName.startsWith('no-')) {
+          const nonNegated = optName.slice(3);
+          const nonNegatedSegments = nonNegated.split('--');
+          const existingValue = nonNegatedSegments.length > 1
+            ? this._getNestedValue(valueTree, nonNegatedSegments)
+            : valueTree[nonNegated];
+          if (typeof existingValue === 'boolean') {
+            isNegation = true;
+            resolvedName = nonNegated;
+          }
+        }
+
+        const pathSegments = resolvedName.split('--');
+        let value;
+
+        if (inlineValue !== undefined) {
+          value = inlineValue;
+        } else if (isNegation) {
+          value = false;
+        } else {
+          const existingValue = pathSegments.length > 1
+            ? this._getNestedValue(valueTree, pathSegments)
+            : valueTree[resolvedName];
+
+          if (typeof existingValue === 'boolean') {
+            value = true;
+          } else if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+            i++;
+            value = args[i];
+            consumedIndices.add(i);
+          } else {
+            value = true;
+          }
+        }
+
+        if (pathSegments.length > 1) {
+          setNestedValue(this.argv, pathSegments, value, resolvedName);
+        } else {
+          this.argv[resolvedName] = value;
+        }
+
+        i++;
+        continue;
+      }
+
+      // Not an option — skip (positional arg)
+      i++;
+    }
+
+    // Remove consumed indices from process.argv in reverse order
+    const sorted = Array.from(consumedIndices).sort((a, b) => b - a);
+    for (const idx of sorted) {
+      process.argv.splice(idx, 1);
+    }
+  }
+
+  _deepMerge(target, source) {
+    for (const key of Object.keys(source)) {
+      if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])
+          && target[key] && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+        this._deepMerge(target[key], source[key]);
+      } else {
+        target[key] = source[key];
+      }
+    }
+    return target;
+  }
+
+  loadAllValues(valueTree) {
+    this._parse(valueTree);
+    return this._deepMerge(valueTree, this.argv);
+  }
+
+  mapValue(cfg, value) {
+    this._parse({});
+    if (this.argv[cfg] !== undefined) {
+      if (typeof value === 'boolean') {
+        if (this.argv[cfg] === true || this.argv[cfg] === 'true') return true;
+        if (this.argv[cfg] === false || this.argv[cfg] === 'false') return false;
+        return this.argv[cfg];
+      }
+      return this.argv[cfg];
+    }
+    return value;
+  }
+}
+
 class ValidationLoader extends ValueLoader {
   mapValue(_cfg, _value) {
     throw new NotImplemented("ValidationLoader is not yet implemented.");
@@ -434,7 +612,7 @@ module.exports = {
   ConfigResolver,
   resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
-  DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader,
+  DefaultValueLoader, CmdArgsLoader, EnvLoader, ArgvLoader, ValidationLoader, NullLoader,
   JsonLoader, DotenvLoader, YamlLoader,
   LOCK, UNLOCK,
   stringType, booleanType, intType,

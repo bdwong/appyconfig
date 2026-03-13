@@ -177,7 +177,85 @@ new DotenvLoader('.env', { prefix: 'DB_', stripPrefix: true })
 | JSON file | JsonLoader | Supports JSONC (comments) |
 | YAML file | YamlLoader | |
 | .env file | DotenvLoader | Options: `{ prefix, stripPrefix, expand, allowMissing, suppressExceptions }` |
-| Command line arguments | CmdArgsLoader | See Commander section below |
+| CLI arguments (built-in) | ArgvLoader | Options: `{ aliases }`. See ArgvLoader section below |
+| CLI arguments (Commander) | CmdArgsLoader | See Commander section below |
+
+## CLI Arguments (ArgvLoader)
+
+`ArgvLoader` parses `process.argv` directly for simple CLI use cases, without requiring Commander.
+
+```js
+const { resolveConfig, ArgvLoader, JsonLoader } = require('appyconfig');
+
+const config = resolveConfig([
+  new JsonLoader('config.json', { allowMissing: true }),
+  new ArgvLoader()
+]);
+```
+
+```sh
+node app.js --host localhost --port 5432
+# config.host => "localhost", config.port => "5432"
+```
+
+Options are passed as `--key value` or `--key=value`. Consumed arguments are removed from `process.argv`, leaving positional args intact.
+
+### Boolean Flags
+
+If a key already exists as a boolean in the value tree (from a previous loader), the option is treated as a flag — no value is consumed from the next argument:
+
+```js
+const config = resolveConfig([
+  new JsonLoader('defaults.json'),  // { "verbose": false }
+  new ArgvLoader()
+]);
+```
+
+```sh
+node app.js --verbose        # verbose => true (flag, not consuming next arg)
+node app.js --no-verbose     # verbose => false (negation)
+```
+
+The `--no-` prefix only negates when the non-negated key exists as a boolean in the value tree. Otherwise, `--no-X` is treated as a regular option named `no-X`.
+
+### Nested Keys
+
+Use `--` within option names to create nested objects:
+
+```sh
+node app.js --database--host localhost --database--port 5432
+# config.database => { host: "localhost", port: "5432" }
+```
+
+### Short Aliases
+
+Map single-dash shortcuts to long-form options:
+
+```js
+new ArgvLoader({
+  aliases: {
+    '-o': '--output-file',
+    '-v': '--verbose'
+  }
+})
+```
+
+```sh
+node app.js -o out.txt -v
+# config.outputFile => "out.txt", config.verbose => true
+```
+
+Unrecognized short options (not in aliases) emit a warning and are left in `process.argv`.
+
+### End-of-Options
+
+A bare `--` stops option parsing. Everything after it remains in `process.argv`:
+
+```sh
+node app.js --verbose -- file1 file2
+# config.verbose => true
+# process.argv => ['node', 'app.js', 'file1', 'file2']
+```
 
 # Advanced Usage
 
@@ -224,7 +302,8 @@ When a configuration tree is provided, each loader looks for its own key in the 
 |--- |--- |--- |--- |
 | Default values | DefaultValueLoader | default | Key is value to set |
 | Environment variables | EnvLoader | env | Key is the environment variable to fetch |
-| Command line arguments | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
+| CLI arguments (built-in) | ArgvLoader | argv | Key is the CLI option name (without `--`) |
+| CLI arguments (Commander) | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
 | JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader |
 | YAML file | YamlLoader | *N/A* | Specify filename when instantiating YamlLoader |
 | .env file | DotenvLoader | dotenv | Specify .env file to load<br>Key is the name of the variable to fetch |
