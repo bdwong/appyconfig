@@ -7,10 +7,14 @@ const { FileLoader } = require('./lib/fileLoader.js');
 const yaml = require('js-yaml');
 const { convertKeys, CASE_CONVERTERS, splitKey, toCamelCase, toSnakeCase, toKebabCase, toPascalCase, toConstantCase, toFlatCase } = require('./lib/caseConverter.js');
 const appRootPath = require('app-root-path');
+const { snapshotKeyPaths, pruneNewKeys } = require('./lib/treeLock.js');
 
 const stringType = new Object(),
   booleanType = new Object(),
   intType = new Object();
+
+const LOCK = new Object();
+const UNLOCK = new Object();
 
 class NotImplementedError extends Error {}
 
@@ -294,6 +298,7 @@ class ConfigResolver {
     this.configTree = null;
     this.valueTree = null;
     this.keyCase = options.keyCase !== undefined ? options.keyCase : 'camelCase';
+    this.locked = options.locked || false;
   }
 
   /**
@@ -338,13 +343,7 @@ class ConfigResolver {
 
     if (configTree === null) {
       // No configTree path: use loadAllValues
-      valueTree = resolveMaps.reduce( (innerValueTree, mapping) => {
-        if (!(mapping instanceof ValueLoader)) {
-          throw new Error("Mapping is not a ValueLoader instance.")
-        }
-        innerValueTree = mapping.loadAllValues(innerValueTree);
-        return innerValueTree;
-      }, valueTree);
+      valueTree = this._reduceLoaders(resolveMaps, valueTree, (loader, vt) => loader.loadAllValues(vt));
 
       if (this.keyCase) {
         const converter = CASE_CONVERTERS[this.keyCase];
@@ -354,22 +353,42 @@ class ConfigResolver {
       }
     } else {
       // Original configTree path: use loadValues
-      valueTree = resolveMaps.reduce( (innerValueTree, mapping) => {
-        if (!(mapping instanceof ValueLoader)) {
-          throw new Error("Mapping is not a ValueLoader instance.")
-        }
-        innerValueTree = mapping.loadValues(configTree, innerValueTree);
-        return innerValueTree;
-      }, valueTree);
+      valueTree = this._reduceLoaders(resolveMaps, valueTree, (loader, vt) => loader.loadValues(configTree, vt));
     }
 
     this.valueTree = valueTree;
     return valueTree ?? {};
   }
 
+  _reduceLoaders(resolveMaps, valueTree, loaderFn) {
+    let locked = this.locked || false;
+    let snapshot = null;
+    if (locked) snapshot = snapshotKeyPaths(valueTree);
+    return resolveMaps.reduce((vt, mapping) => {
+      if (mapping === LOCK) {
+        locked = true;
+        snapshot = snapshotKeyPaths(vt);
+        return vt;
+      }
+      if (mapping === UNLOCK) {
+        locked = false;
+        snapshot = null;
+        return vt;
+      }
+      if (!(mapping instanceof ValueLoader)) {
+        throw new Error("Mapping is not a ValueLoader instance.");
+      }
+      vt = loaderFn(mapping, vt);
+      if (locked && snapshot) pruneNewKeys(vt, snapshot);
+      return vt;
+    }, valueTree);
+  }
+
   _isResolveMaps(arg) {
     if (arg instanceof ValueLoader) return true;
-    if (Array.isArray(arg) && (arg.length === 0 || arg[0] instanceof ValueLoader)) return true;
+    if (arg === LOCK || arg === UNLOCK) return true;
+    if (Array.isArray(arg) && (arg.length === 0 ||
+        arg[0] instanceof ValueLoader || arg[0] === LOCK || arg[0] === UNLOCK)) return true;
     return false;
   }
 
@@ -417,6 +436,7 @@ module.exports = {
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
   DefaultValueLoader, CmdArgsLoader, EnvLoader, ValidationLoader, NullLoader,
   JsonLoader, DotenvLoader, YamlLoader,
+  LOCK, UNLOCK,
   stringType, booleanType, intType,
   convertKeys, CASE_CONVERTERS,
   splitKey, toCamelCase, toSnakeCase, toKebabCase, toPascalCase, toConstantCase, toFlatCase,

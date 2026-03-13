@@ -127,6 +127,35 @@ new DotenvLoader('.env', { prefix: 'APP_', stripPrefix: true })
 // APP_DB__HOST=localhost in .env  =>  { db: { host: "localhost" } }
 ```
 
+## Tree Locking
+
+Use `LOCK` and `UNLOCK` to control which loaders can introduce new keys. This is useful when you want to establish the configuration structure from a trusted source (like a JSON file) and then only allow subsequent loaders to override existing values.
+
+```js
+const { ConfigResolver, JsonLoader, EnvLoader, DotenvLoader, LOCK, UNLOCK } = require('appyconfig');
+
+const resolver = new ConfigResolver({ keyCase: null });
+const config = resolver.resolveConfig([
+  new JsonLoader('config.json'),   // Establishes the allowed key structure
+  LOCK,                            // No new keys from here on
+  new EnvLoader(),                 // Can only override existing keys
+  new DotenvLoader('.env'),        // Can only override existing keys
+  UNLOCK,                          // (optional) Re-allow new keys
+]);
+```
+
+When the tree is locked, loaders after `LOCK` can update values for keys that already exist but cannot add new keys. `UNLOCK` restores normal behavior, allowing new keys again.
+
+You can also lock from the start using the `locked` constructor option. In this case, the initial `valueTree` defines the allowed shape:
+
+```js
+const resolver = new ConfigResolver({ keyCase: null, locked: true });
+const config = resolver.resolveConfig([
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
+], { HOST: 'default', PORT: '3000' });
+// Only HOST and PORT can be set — any other APP_* vars are ignored
+```
+
 ## Prefix Filtering
 
 `EnvLoader` and `DotenvLoader` accept `prefix` and `stripPrefix` options to select and rename keys:
