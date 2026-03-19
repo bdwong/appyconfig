@@ -9,6 +9,7 @@ const { convertKeys, CASE_CONVERTERS, splitKey, toCamelCase, toSnakeCase, toKeba
 const appRootPath = require('app-root-path');
 const { snapshotKeyPaths, pruneNewKeys } = require('./lib/treeLock.js');
 
+// TODO: Implement ValidationLoader to validate value types using these sentinels if needed.
 const stringType = new Object(),
   booleanType = new Object(),
   intType = new Object();
@@ -454,12 +455,6 @@ class ArgvLoader extends ValueLoader {
   }
 }
 
-class ValidationLoader extends ValueLoader {
-  mapValue(_cfg, _value) {
-    throw new NotImplemented("ValidationLoader is not yet implemented.");
-  }
-}
-
 const DEFAULT_MAPPING = [new DefaultValueLoader(), new EnvLoader()];
 const DEFAULT_TREELESS_MAPPING = [
   new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
@@ -647,7 +642,7 @@ module.exports = {
   ConfigResolver,
   resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
-  DefaultValueLoader, CmdArgsLoader, EnvLoader, ArgvLoader, ValidationLoader, NullLoader,
+  DefaultValueLoader, CmdArgsLoader, EnvLoader, ArgvLoader, NullLoader,
   JsonLoader, DotenvLoader, YamlLoader,
   LOCK, UNLOCK,
   stringType, booleanType, intType,

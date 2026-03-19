@@ -133,7 +133,6 @@ describe('Integration', () => {
     assert.equal(typeof appy.JsonLoader, 'function');
     assert.equal(typeof appy.DotenvLoader, 'function');
     assert.equal(typeof appy.YamlLoader, 'function');
-    assert.equal(typeof appy.ValidationLoader, 'function');
   });
 
   it('exports: type sentinels are exported', () => {

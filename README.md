@@ -485,7 +485,7 @@ const { ConfigResolver, DefaultValueLoader, EnvLoader, CmdArgsLoader } = require
 
 const config_tree = {
   // Define your config tree here.
-  // The key for parsing command line args is cmdArgs, and it contains
+  // The key for parsing command line args is cmdArg, and it contains
   // the command line option key to retrieve from program.opts().
   mysetting: {
     default: "defaultValue",
