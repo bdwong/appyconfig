@@ -471,6 +471,8 @@ const DEFAULT_TREELESS_MAPPING = [
  * Class to encapsulate the configuration resolution logic for easier testing.
  */
 class ConfigResolver {
+  static OPTIONS_KEYS = new Set(['prefix']);
+
   constructor(options = {}) {
     this.resolveMaps = [];
     this.configTree = null;
@@ -493,9 +495,13 @@ class ConfigResolver {
     let configTree = null;
     let resolveMaps = null;
     let valueTree = {};
+    let options = {};
 
     if (args.length === 0) {
       // No args: no configTree, default treeless mapping
+    } else if (this._isOptions(args[0])) {
+      // First arg is options hash — no configTree, no loaders
+      options = args[0];
     } else if (this._isResolveMaps(args[0])) {
       // First arg is loaders — no configTree
       resolveMaps = args[0];
@@ -509,7 +515,13 @@ class ConfigResolver {
 
     // Pick the appropriate default if no loaders were specified.
     if (resolveMaps === null) {
-      resolveMaps = configTree === null ? DEFAULT_TREELESS_MAPPING : DEFAULT_MAPPING;
+      if (configTree === null) {
+        resolveMaps = Object.keys(options).length > 0
+          ? this._buildDefaultTreelessMapping(options)
+          : DEFAULT_TREELESS_MAPPING;
+      } else {
+        resolveMaps = DEFAULT_MAPPING;
+      }
     }
 
     if (!Array.isArray(resolveMaps)) {
@@ -560,6 +572,27 @@ class ConfigResolver {
       if (locked && snapshot) pruneNewKeys(vt, snapshot);
       return vt;
     }, valueTree);
+  }
+
+  _isOptions(arg) {
+    if (arg === null || arg === undefined) return false;
+    if (typeof arg !== 'object' || Array.isArray(arg)) return false;
+    if (arg instanceof ValueLoader) return false;
+    const keys = Object.keys(arg);
+    if (keys.length === 0) return false;
+    return keys.every(k => ConfigResolver.OPTIONS_KEYS.has(k));
+  }
+
+  _buildDefaultTreelessMapping(options = {}) {
+    const prefix = options.prefix !== undefined ? options.prefix : 'APP_';
+    const envOpts = prefix === ''
+      ? {}
+      : { prefix, stripPrefix: true };
+    return [
+      new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
+      new DotenvLoader('.env', { allowMissing: true }),
+      new EnvLoader(envOpts)
+    ];
   }
 
   _isResolveMaps(arg) {

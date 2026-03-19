@@ -85,6 +85,36 @@ describe('ConfigResolver', () => {
     });
   });
 
+  describe('_isOptions', () => {
+    it('recognizes { prefix: "X_" } as options', () => {
+      assert.equal(resolver._isOptions({ prefix: 'X_' }), true);
+    });
+
+    it('returns false for empty object (backward compat as configTree)', () => {
+      assert.equal(resolver._isOptions({}), false);
+    });
+
+    it('returns false when unknown keys are present', () => {
+      assert.equal(resolver._isOptions({ prefix: 'X_', unknown: 1 }), false);
+    });
+
+    it('returns false for null', () => {
+      assert.equal(resolver._isOptions(null), false);
+    });
+
+    it('returns false for undefined', () => {
+      assert.equal(resolver._isOptions(undefined), false);
+    });
+
+    it('returns false for arrays', () => {
+      assert.equal(resolver._isOptions([]), false);
+    });
+
+    it('returns false for ValueLoader instances', () => {
+      assert.equal(resolver._isOptions(new appy.DefaultValueLoader()), false);
+    });
+  });
+
   describe('resolveCommander', () => {
     const cmdOpts = { opt1: 'optvalue1', opt2: 'optvalue2', optFalse: false };
 

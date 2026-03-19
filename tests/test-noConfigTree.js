@@ -345,6 +345,70 @@ describe('No configTree usage', () => {
     });
   });
 
+  describe('resolveConfig options hash', () => {
+    const savedEnv = {};
+    const testVars = ['MYAPP_DB_HOST', 'MYAPP_DB_PORT', 'APP_SOMETHING', 'PLAIN_VAR'];
+
+    beforeEach(() => {
+      testVars.forEach(v => { savedEnv[v] = process.env[v]; delete process.env[v]; });
+      process.env.MYAPP_DB_HOST = 'myhost';
+      process.env.MYAPP_DB_PORT = '3306';
+      process.env.APP_SOMETHING = 'app_val';
+      process.env.PLAIN_VAR = 'plain_val';
+    });
+
+    afterEach(() => {
+      testVars.forEach(v => {
+        if (savedEnv[v] === undefined) delete process.env[v];
+        else process.env[v] = savedEnv[v];
+      });
+    });
+
+    it('resolveConfig({ prefix: "MYAPP_" }) reads MYAPP_-prefixed vars with strip', () => {
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig({ prefix: 'MYAPP_' });
+      assert.equal(result.dbHost, 'myhost');
+      assert.equal(result.dbPort, '3306');
+      assert.equal(result.something, undefined);
+    });
+
+    it('resolveConfig({ prefix: "" }) reads all env vars (no prefix filter)', () => {
+      const resolver = new appy.ConfigResolver({ keyCase: null });
+      const result = resolver.resolveConfig({ prefix: '' });
+      assert.equal(result.MYAPP_DB_HOST, 'myhost');
+      assert.equal(result.PLAIN_VAR, 'plain_val');
+    });
+
+    it('resolveConfig() still defaults to APP_ prefix (regression)', () => {
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig();
+      assert.equal(result.something, 'app_val');
+      assert.equal(result.plainVar, undefined);
+    });
+
+    it('resolveConfig({}) still treated as configTree (regression)', () => {
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig({});
+      assert.deepEqual(result, {});
+    });
+
+    it('resolveConfig({ key: { default: "val" } }) still works as configTree (regression)', () => {
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig(
+        { key: { default: 'val' } },
+        new appy.DefaultValueLoader()
+      );
+      assert.equal(result.key, 'val');
+    });
+
+    it('global convenience appy.resolveConfig({ prefix: "MYAPP_" }) works', () => {
+      // Use a fresh resolver via ConfigResolver since the global one may have state
+      const resolver = new appy.ConfigResolver();
+      const result = resolver.resolveConfig({ prefix: 'MYAPP_' });
+      assert.equal(result.dbHost, 'myhost');
+    });
+  });
+
   describe('nested key expansion via __', () => {
     const savedEnv = {};
     const testVars = ['APP_DATABASE__HOST', 'APP_DATABASE__PORT', 'APP_LOG_LEVEL'];

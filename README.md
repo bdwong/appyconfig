@@ -39,6 +39,23 @@ Running your app:
 APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
 ```
 
+To customize the environment variable prefix, pass an options hash:
+
+```js
+const config = resolveConfig({ prefix: 'MYAPP_' });
+```
+
+```sh
+MYAPP_DATABASE_HOST=localhost node app.js
+# config.databaseHost => "localhost"
+```
+
+Use an empty prefix to read all environment variables without filtering:
+
+```js
+const config = resolveConfig({ prefix: '' });
+```
+
 The defaults look for `config.json` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), `.env` in your current working directory, and `APP_`-prefixed environment variables. Both files are optional and silently skipped if missing. This is equivalent to:
 
 ```js
