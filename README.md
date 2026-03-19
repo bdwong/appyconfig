@@ -10,7 +10,7 @@ npm install appyconfig
 
 # Usage
 
-Call `resolveConfig()` to gather configuration from different sources. With no arguments, it loads from `config.json` (if present), `.env` (if present), and `APP_`-prefixed environment variables. Keys are automatically converted to camelCase.
+Call `resolveConfig()` to gather configuration from different sources. With no arguments, it loads from `config.json` (if present), `.env` (if present), `APP_`-prefixed environment variables, and command line arguments. Keys are automatically converted to camelCase.
 
 ## Basic Example
 
@@ -39,6 +39,13 @@ Running your app:
 APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
 ```
 
+Or you can use command line arguments to set the database host value:
+
+```sh
+node app.js --database-host myserver
+# config.databaseHost => "myserver"
+```
+
 To customize the environment variable prefix, pass an options hash:
 
 ```js
@@ -56,13 +63,14 @@ Use an empty prefix to read all environment variables without filtering:
 const config = resolveConfig({ prefix: '' });
 ```
 
-The defaults look for `config.json` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), `.env` in your current working directory, and `APP_`-prefixed environment variables. Both files are optional and silently skipped if missing. This is equivalent to:
+The defaults look for `config.json` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), `.env` in your current working directory, `APP_`-prefixed environment variables, and command line arguments. Both files are optional and silently skipped if missing. This is equivalent to:
 
 ```js
 const config = resolveConfig([
   new JsonLoader('config.json', { allowMissing: true }),
   new DotenvLoader('.env', { allowMissing: true }),
-  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
+  new ArgvLoader()
 ]);
 ```
 

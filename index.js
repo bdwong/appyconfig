@@ -464,7 +464,8 @@ const DEFAULT_MAPPING = [new DefaultValueLoader(), new EnvLoader()];
 const DEFAULT_TREELESS_MAPPING = [
   new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
   new DotenvLoader('.env', { allowMissing: true }),
-  new EnvLoader({ prefix: 'APP_', stripPrefix: true })
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
+  new ArgvLoader()
 ];
 
 /**
@@ -591,7 +592,8 @@ class ConfigResolver {
     return [
       new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
       new DotenvLoader('.env', { allowMissing: true }),
-      new EnvLoader(envOpts)
+      new EnvLoader(envOpts),
+      new ArgvLoader()
     ];
   }
 
