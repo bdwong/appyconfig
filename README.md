@@ -14,6 +14,8 @@ Call `resolveConfig()` to gather configuration from different sources. With no a
 
 ## Basic Example
 
+The recommended pattern is to resolve your configuration once in a dedicated module and import it everywhere else. Because Node caches module exports, every file that imports the config module gets the same object — a single source of truth for your app's configuration.
+
 In `lib/config.js`:
 
 ```js
@@ -24,7 +26,7 @@ const config = resolveConfig();
 module.exports = config;
 ```
 
-In `app.js`:
+Then import it wherever you need it, e.g. in `app.js`:
 
 ```js
 const config = require('./lib/config');
@@ -63,20 +65,9 @@ Use an empty prefix to read all environment variables without filtering:
 const config = resolveConfig({ prefix: '' });
 ```
 
-The defaults look for `config.json` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), `.env` in your current working directory, `APP_`-prefixed environment variables, and command line arguments. Both files are optional and silently skipped if missing. This is equivalent to:
+## Changing Loaders
 
-```js
-const config = resolveConfig([
-  new JsonLoader('config.json', { allowMissing: true }),
-  new DotenvLoader('.env', { allowMissing: true }),
-  new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
-  new ArgvLoader()
-]);
-```
-
-## Multiple Loaders
-
-Pass an array of loaders. Later loaders override earlier ones.
+You can specify which loaders (i.e. configuration data sources) will be resolved for your configuration. Pass an array of loaders to the `resolveConfig()` call. Later loaders override earlier ones.
 
 In `lib/config.js`:
 
@@ -93,9 +84,35 @@ const config = resolveConfig([
 module.exports = config;
 ```
 
+Here is a list of valid loaders:
+
+| Data source | Class | Notes |
+|--- |--- |--- |
+| Environment variables | EnvLoader | Options: `{ prefix, stripPrefix, expand }` |
+| JSON file | JsonLoader | Supports JSONC (comments) |
+| YAML file | YamlLoader | |
+| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, expand, allowMissing, suppressExceptions }` |
+| CLI arguments (built-in) | ArgvLoader | Options: `{ aliases }`. See ArgvLoader section below |
+| CLI arguments (Commander) | CmdArgsLoader | See Commander section below |
+
+### Default Loaders
+
+When you call `resolveConfig()` with no arguments, the defaults look for `config.json` in your project root (detected via [app-root-path](https://www.npmjs.com/package/app-root-path)), `.env` in your current working directory, `APP_`-prefixed environment variables, and command line arguments. Both files are optional and silently skipped if missing. This is equivalent to:
+
+```js
+const config = resolveConfig([
+  new JsonLoader('config.json', { allowMissing: true }),
+  new DotenvLoader('.env', { allowMissing: true }),
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
+  new ArgvLoader()
+]);
+```
+
 ## Customizing Key Case
 
 By default, keys are converted to camelCase. Use the `ConfigResolver` class to change this.
+
+Typically, you create a single `ConfigResolver` with one unified config tree covering all your application's settings, and share that instance across your app as a single source of truth for configuration.
 
 In `lib/config.js`:
 
@@ -194,17 +211,6 @@ new EnvLoader({ prefix: 'DB_', stripPrefix: true })
 new DotenvLoader('.env', { prefix: 'DB_', stripPrefix: true })
 ```
 
-## Data Sources
-
-| Data source | Class | Notes |
-|--- |--- |--- |
-| Environment variables | EnvLoader | Options: `{ prefix, stripPrefix, expand }` |
-| JSON file | JsonLoader | Supports JSONC (comments) |
-| YAML file | YamlLoader | |
-| .env file | DotenvLoader | Options: `{ prefix, stripPrefix, expand, allowMissing, suppressExceptions }` |
-| CLI arguments (built-in) | ArgvLoader | Options: `{ aliases }`. See ArgvLoader section below |
-| CLI arguments (Commander) | CmdArgsLoader | See Commander section below |
-
 ## CLI Arguments (ArgvLoader)
 
 `ArgvLoader` parses `process.argv` directly for simple CLI use cases, without requiring Commander.
@@ -281,6 +287,69 @@ node app.js --verbose -- file1 file2
 # config.verbose => true
 # process.argv => ['node', 'app.js', 'file1', 'file2']
 ```
+
+## Putting It All Together
+
+Here is a realistic example that combines JSON defaults, a `.env` file, environment variables, CLI arguments, and tree locking into a single configuration module.
+
+In `config/defaults.json`:
+
+```json
+{
+  "host": "localhost",
+  "port": 3000,
+  "database": {
+    "host": "localhost",
+    "port": 5432,
+    "name": "myapp_dev"
+  },
+  "verbose": false
+}
+```
+
+In `lib/config.js`:
+
+```js
+const {
+  ConfigResolver, JsonLoader, DotenvLoader, EnvLoader, ArgvLoader, LOCK
+} = require('appyconfig');
+
+const resolver = new ConfigResolver();
+const config = resolver.resolveConfig([
+  new JsonLoader('config/defaults.json'),   // 1. Start with JSON defaults
+  LOCK,                                     // 2. Lock the tree — only these keys allowed
+  new DotenvLoader('.env', { allowMissing: true, prefix: 'APP_', stripPrefix: true }),
+  new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
+  new ArgvLoader({ aliases: { '-v': '--verbose' } })
+]);
+
+module.exports = config;
+```
+
+In `app.js`:
+
+```js
+const config = require('./lib/config');
+
+console.log(config.host);          // from env, .env, or default
+console.log(config.database.name); // nested key from JSON, overridable via APP_DATABASE__NAME
+console.log(config.verbose);       // flag, toggleable with --verbose or -v
+```
+
+Running your app:
+
+```sh
+# Use defaults
+node app.js
+
+# Override via environment variables
+APP_DATABASE__NAME=myapp_prod APP_PORT=8080 node app.js
+
+# Override via CLI arguments
+node app.js --port 8080 --database--host db.example.com -v
+```
+
+Because the tree is locked after `JsonLoader`, only keys defined in `defaults.json` can be set — stray environment variables or typos in CLI arguments are silently ignored.
 
 # Advanced Usage
 
@@ -371,7 +440,7 @@ This is helpful for organizing your configuration.
 const config_tree = {
   "api": {
     "api_key": {
-      //...
+      default: "CLASSIFIED"
     },
     "api_secret": {
       //...
@@ -387,6 +456,14 @@ const config_tree = {
     }
   }
 }
+```
+
+To access your nested config, use dot notation.
+
+```js
+const config = require('./lib/config');
+
+console.log(config.api.api_key);  // "CLASSIFIED"
 ```
 
 ### Configuration Values
@@ -426,7 +503,7 @@ const config = resolveConfig(config_tree, [
 ]);
 ```
 
-You can choose to use different sources. For example, to fill the configuration with null values:
+You can choose which loaders (data sources) to use with a configuration tree. The array of loaders becomes the second argument in the `resolveConfig()` call.  For example, to fill the configuration with null values:
 
 ```js
 const config = resolveConfig(config_tree, [new NullLoader])
@@ -478,19 +555,24 @@ This means the `Command` instance must be passed to `resolveCommander()` so that
 
 ### Commander Example
 
+The recommended pattern is: resolve config once at module level, export the `config` object and the `resolver`, and import `config` wherever you need it. The preAction hook updates `config` in place before your action handlers run — no re-resolution needed.
+
 In `lib/config.js`:
 
 ```js
 const { ConfigResolver, DefaultValueLoader, EnvLoader, CmdArgsLoader } = require('appyconfig');
 
 const config_tree = {
-  // Define your config tree here.
-  // The key for parsing command line args is cmdArg, and it contains
-  // the command line option key to retrieve from program.opts().
+  // The cmdArg key maps to the Commander option name from program.opts().
   mysetting: {
     default: "defaultValue",
     env: "MYSETTING",
     cmdArg: "mySetting" // --my-setting
+  },
+  anothersetting: {
+    default: "the default",
+    env: "ANOTHERSETTING",
+    cmdArg: "otherSetting" // --other-setting
   }
 };
 
@@ -501,33 +583,45 @@ const config = resolver.resolveConfig(config_tree, [
   new CmdArgsLoader
 ]);
 
-module.exports = { config, resolveCommander: resolver.resolveCommander.bind(resolver) };
+module.exports = { config, resolver };
 ```
 
 In `app.js`:
 
 ```js
 const { Command } = require('commander');
-const { resolveCommander } = require('./lib/config');
+const { resolver } = require('./lib/config');
 
 const program = new Command();
-resolveCommander(program);
 
+// Define your program command line options here...
 // Note an action must be run to trigger option parsing.
-program.action(() => {});
 
-// Set up your program command line options here...
+program.action(() => {
+  // You can access config.mysetting here.
+});
+
+program.command('subcommand').action(() => {
+  // config.mysetting also works in subcommands.
+});
+
+// Install the preAction hook
+resolver.resolveCommander(program);
 
 program.parse(process.argv);
 ```
 
-Using the configuration elsewhere, e.g. in `lib/server.js`:
+The preAction hook updates `resolver.valueTree` in place — and that is the same object returned by `resolveConfig()`. Any module that imported `config` already has the updated values. Simply `require` the config module wherever you need it:
+
+In `lib/server.js`:
 
 ```js
 const { config } = require('./config');
 
 console.log(`My setting: ${config.mysetting}`);
 ```
+
+Do not call `resolveConfig()` again inside an action handler. The preAction hook has already re-resolved the config, so a second call is either redundant or, if done on a different resolver, will miss the CLI values entirely.
 
 To change the option on the command line:
 
@@ -537,19 +631,15 @@ node app.js --my-setting updated
 
 ## Overlay Additional Configuration
 
-If you want to merge the resolved configuration object with another data source after the fact, you can call resolveConfig(), passing in the existing configuration object and a new data source. Depending on your data source, you may need a different configuration tree from the one you created in `lib/config.js`.
-
-In `app.js`:
+You can merge additional data sources into an existing configuration by passing a `valueTree` as the second argument to `resolveConfig()`. The new loader's values are merged on top of the existing object.
 
 ```js
-const config = require('./lib/config');
-const { program } = require('commander');
+const { resolveConfig, YamlLoader } = require('appyconfig');
 
-// Grab a user configuration file from program arguments.
-const userConfigFile = program.args[0];
+// Initial configuration from environment variables
+const config = resolveConfig();
 
-// YamlLoader does not use the config tree, so it's okay to pass an empty object.
-const newConfig = resolveConfig({}, new YamlLoader(userConfigFile), config);
-
-// Do something with newConfig...
+// Later, overlay a user-supplied YAML file onto the existing config
+const userConfigFile = process.argv[2];
+const updatedConfig = resolveConfig(new YamlLoader(userConfigFile), config);
 ```
