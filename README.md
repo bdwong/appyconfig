@@ -1,6 +1,6 @@
 # appyconfig
 
-Load and override configuration from multiple sources. Use it anywhere with ease. Supports JSON, JSONC, YAML, .env files, environment variables, CLI arguments, and Commander.
+Load and override configuration from multiple sources. Use it anywhere with ease. Supports JSON, JSONC, YAML, TOML, .env files, environment variables, CLI arguments, and Commander.
 
 # Install
 
@@ -89,7 +89,7 @@ You can specify which loaders (i.e. configuration data sources) will be resolved
 In `lib/config.js`:
 
 ```js
-const { resolveConfig, EnvLoader, DotenvLoader, JsonLoader, YamlLoader } = require('appyconfig');
+const { resolveConfig, EnvLoader, DotenvLoader, JsonLoader, YamlLoader, TomlLoader } = require('appyconfig');
 
 const config = resolveConfig([
   new JsonLoader('config/defaults.json'),
@@ -108,6 +108,7 @@ Here is a list of valid loaders:
 | Environment variables | EnvLoader | Options: `{ prefix, stripPrefix, expand }` |
 | JSON file | JsonLoader | Supports JSONC (comments) |
 | YAML file | YamlLoader | |
+| TOML file | TomlLoader | |
 | .env file | DotenvLoader | Options: `{ prefix, stripPrefix, expand, allowMissing, suppressExceptions }` |
 | CLI arguments (built-in) | ArgvLoader | Options: `{ aliases }`. See ArgvLoader section below |
 | CLI arguments (Commander) | CmdArgsLoader | See Commander section below |
@@ -417,6 +418,7 @@ When a configuration tree is provided, each loader looks for its own key in the 
 | CLI arguments (Commander) | CmdArgsLoader | cmdArg | Key is the command line option to retrieve |
 | JSON file | JsonLoader | *N/A* | Specify filename when instantiating JsonLoader |
 | YAML file | YamlLoader | *N/A* | Specify filename when instantiating YamlLoader |
+| TOML file | TomlLoader | *N/A* | Specify filename when instantiating TomlLoader |
 | .env file | DotenvLoader | dotenv | Specify .env file to load<br>Key is the name of the variable to fetch |
 
 ### Default values
@@ -447,6 +449,10 @@ const config = resolveConfig(config_tree, [
 ### YAML files
 
 Similar to JSON files, pass an instance of `YamlLoader`.
+
+### TOML files
+
+Similar to JSON files, pass an instance of `TomlLoader`. TOML datetime values are preserved as `Date` objects.
 
 ### Nested Values
 

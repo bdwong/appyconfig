@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const { ValueLoader, copyKeyedMappingAssignmentStrategy } = require('./lib/valueLoader.js');
 const { FileLoader } = require('./lib/fileLoader.js');
 const yaml = require('js-yaml');
+const { parse: parseToml } = require('smol-toml');
 const { convertKeys, CASE_CONVERTERS, splitKey, toCamelCase, toSnakeCase, toKebabCase, toPascalCase, toConstantCase, toFlatCase } = require('./lib/caseConverter.js');
 const appRootPath = require('app-root-path');
 const { snapshotKeyPaths, pruneNewKeys } = require('./lib/treeLock.js');
@@ -253,6 +254,38 @@ class YamlLoader extends FileLoader {
   loadValues(_configTree, valueTree) {
     try {
       this.fileData = yaml.load(readFileSync(this.filename).toString(), 'utf8');
+    } catch(e) {
+      if(this._shouldSuppress(e)) {
+        this.fileData = {};
+      } else {
+        console.log(`exception: ${e}`);
+        throw e;
+      }
+    }
+    return this.visitTree(this.fileData, valueTree);
+  }
+
+  loadAllValues(valueTree) {
+    return this.loadValues(null, valueTree);
+  }
+
+  mapValue(cfg, value) {
+    if (cfg !== undefined) {
+      return cfg;
+    } else {
+      return value;
+    }
+  }
+}
+
+class TomlLoader extends FileLoader {
+  constructor(filename, optionsOrSuppressExceptions = false) {
+    super(filename, optionsOrSuppressExceptions);
+  }
+
+  loadValues(_configTree, valueTree) {
+    try {
+      this.fileData = parseToml(readFileSync(this.filename).toString());
     } catch(e) {
       if(this._shouldSuppress(e)) {
         this.fileData = {};
@@ -643,7 +676,7 @@ module.exports = {
   resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
   DefaultValueLoader, CmdArgsLoader, EnvLoader, ArgvLoader, NullLoader,
-  JsonLoader, DotenvLoader, YamlLoader,
+  JsonLoader, DotenvLoader, YamlLoader, TomlLoader,
   LOCK, UNLOCK,
   stringType, booleanType, intType,
   convertKeys, CASE_CONVERTERS,
