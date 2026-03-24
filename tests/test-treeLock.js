@@ -92,7 +92,7 @@ describe('Tree locking integration', () => {
       const resolver = new appy.ConfigResolver({ keyCase: null });
       const result = resolver.resolveConfig([
         new appy.EnvLoader({ prefix: 'TL_', stripPrefix: true }),
-      ], { EXISTING: 'original' });
+      ], null, { EXISTING: 'original' });
       // Without lock, both keys appear
       assert.equal(result.EXISTING, 'updated');
       assert.equal(result.NEW, 'should_not_appear');
@@ -102,7 +102,7 @@ describe('Tree locking integration', () => {
       const result2 = resolver2.resolveConfig([
         appy.LOCK,
         new appy.EnvLoader({ prefix: 'TL_', stripPrefix: true }),
-      ], { EXISTING: 'original' });
+      ], null, { EXISTING: 'original' });
       assert.equal(result2.EXISTING, 'updated');
       assert.equal(result2.NEW, undefined);
     } finally {
@@ -116,11 +116,11 @@ describe('Tree locking integration', () => {
   it('LOCK prevents new keys from JsonLoader (tree-based)', () => {
     const resolver = new appy.ConfigResolver();
     const configTree = { key1: { default: 'val1' } };
-    const result = resolver.resolveConfig(configTree, [
+    const result = resolver.resolveConfig([
       new appy.DefaultValueLoader(),
       appy.LOCK,
       new appy.JsonLoader(path.join(__dirname, 'testconfig.json')),
-    ]);
+    ], configTree);
     // key1 should be there (from default), key2 from JSON should be blocked
     assert.equal(result.key1, 'val1');
     assert.equal(result.key2, undefined);
@@ -134,7 +134,7 @@ describe('Tree locking integration', () => {
       const result = resolver.resolveConfig([
         appy.LOCK,
         new appy.EnvLoader({ prefix: 'TL_', stripPrefix: true }),
-      ], { HOST: 'oldhost', PORT: '3000' });
+      ], null, { HOST: 'oldhost', PORT: '3000' });
       assert.equal(result.HOST, 'newhost');
       assert.equal(result.PORT, '3000');
     } finally {
@@ -151,7 +151,7 @@ describe('Tree locking integration', () => {
       const result = resolver.resolveConfig([
         appy.LOCK,
         new appy.EnvLoader({ prefix: 'TL_', stripPrefix: true }),
-      ], { DB: { HOST: 'oldhost', PORT: '5432' } });
+      ], null, { DB: { HOST: 'oldhost', PORT: '5432' } });
       assert.equal(result.DB.HOST, 'newhost');
       assert.equal(result.DB.PORT, '5432');
     } finally {
@@ -169,7 +169,7 @@ describe('Tree locking integration', () => {
         appy.LOCK,
         appy.UNLOCK,
         new appy.EnvLoader({ prefix: 'TL_NEW2', stripPrefix: true }),
-      ], { EXISTING: 'val' });
+      ], null, { EXISTING: 'val' });
       // After UNLOCK, new keys are allowed again
       assert.equal(result[''], 'appears');
     } finally {
@@ -198,7 +198,7 @@ describe('Tree locking integration', () => {
         loaderB,       // new key '' allowed
         appy.LOCK,
         loaderC,       // new key '' blocked (already exists from B now)
-      ], { EXISTING: 'val' });
+      ], null, { EXISTING: 'val' });
       assert.equal(result.EXISTING, 'val');
       // loaderA was blocked, loaderB allowed '' key, loaderC can override ''
       assert.equal(result[''], '3');
@@ -218,7 +218,7 @@ describe('Tree locking integration', () => {
       const result = resolver.resolveConfig([
         appy.LOCK,
         new appy.EnvLoader({ prefix: 'TL_EXTRA', stripPrefix: true }),
-      ], { EXISTING: 'val' });
+      ], null, { EXISTING: 'val' });
       assert.equal(result.EXISTING, 'val');
       assert.equal(result[''], undefined);
     } finally {
@@ -234,7 +234,7 @@ describe('Tree locking integration', () => {
       const resolver = new appy.ConfigResolver({ keyCase: null, locked: true });
       const result = resolver.resolveConfig([
         new appy.EnvLoader({ prefix: 'TL_NEW3', stripPrefix: true }),
-      ], { EXISTING: 'val' });
+      ], null, { EXISTING: 'val' });
       assert.equal(result.EXISTING, 'val');
       assert.equal(result[''], undefined);
     } finally {

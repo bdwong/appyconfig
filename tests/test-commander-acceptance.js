@@ -17,8 +17,8 @@ describe('Commander acceptance — program-level options', () => {
     };
 
     const resolver = new appy.ConfigResolver();
-    resolver.resolveConfig(configTree,
-      [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]);
+    resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+      configTree);
 
     // Before parsing, defaults are in place.
     assert.equal(resolver.valueTree.name, 'nobody');
@@ -53,8 +53,8 @@ describe('Commander acceptance — program-level options', () => {
     };
 
     const resolver = new appy.ConfigResolver();
-    resolver.resolveConfig(configTree,
-      [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]);
+    resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+      configTree);
 
     assert.deepEqual(resolver.valueTree, {
       server: {
@@ -93,8 +93,8 @@ describe('Commander acceptance — subcommand options', () => {
     };
 
     const resolver = new appy.ConfigResolver();
-    resolver.resolveConfig(configTree,
-      [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]);
+    resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+      configTree);
 
     assert.equal(resolver.valueTree.verbose, false);
     assert.equal(resolver.valueTree.port, '3000');
@@ -136,8 +136,8 @@ describe('Commander acceptance — subcommand options', () => {
     };
 
     const resolver = new appy.ConfigResolver();
-    resolver.resolveConfig(configTree,
-      [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]);
+    resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+      configTree);
 
     assert.deepEqual(resolver.valueTree, {
       app: {

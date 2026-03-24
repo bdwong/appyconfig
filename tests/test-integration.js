@@ -27,44 +27,44 @@ describe('Integration', () => {
   it('default + env: env overrides default, default persists where no env', () => {
     process.env.APPY_INT_TEST1 = 'from_env';
     const resolver = new appy.ConfigResolver();
-    const result = resolver.resolveConfig({
+    const result = resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.EnvLoader()], {
       key1: { default: 'def1', env: 'APPY_INT_TEST1' },
       key2: { default: 'def2', env: 'APPY_INT_TEST2' }
-    }, [new appy.DefaultValueLoader(), new appy.EnvLoader()]);
+    });
     assert.equal(result.key1, 'from_env');
     assert.equal(result.key2, 'def2');
   });
 
   it('default + JSON: JSON file overrides defaults', () => {
     const resolver = new appy.ConfigResolver();
-    const result = resolver.resolveConfig({
-      key2: { default: 'will_be_overridden' }
-    }, [
+    const result = resolver.resolveConfig([
       new appy.DefaultValueLoader(),
       new appy.JsonLoader(path.join(__dirname, 'testconfig.json'))
-    ]);
+    ], {
+      key2: { default: 'will_be_overridden' }
+    });
     assert.equal(result.key2, 'value2');
   });
 
   it('default + YAML: YAML file overrides defaults', () => {
     const resolver = new appy.ConfigResolver();
-    const result = resolver.resolveConfig({
-      key2: { default: 'will_be_overridden' }
-    }, [
+    const result = resolver.resolveConfig([
       new appy.DefaultValueLoader(),
       new appy.YamlLoader(path.join(__dirname, 'test.yaml'))
-    ]);
+    ], {
+      key2: { default: 'will_be_overridden' }
+    });
     assert.equal(result.key2, 'value2');
   });
 
   it('default + dotenv: dotenv overrides defaults', () => {
     const resolver = new appy.ConfigResolver();
-    const result = resolver.resolveConfig({
-      mykey: { default: 'will_be_overridden', dotenv: 'TEST_ENVKEY' }
-    }, [
+    const result = resolver.resolveConfig([
       new appy.DefaultValueLoader(),
       new appy.DotenvLoader(path.join(__dirname, 'test.env'))
-    ]);
+    ], {
+      mykey: { default: 'will_be_overridden', dotenv: 'TEST_ENVKEY' }
+    });
     assert.equal(result.mykey, 'myenv value');
   });
 
@@ -79,10 +79,10 @@ describe('Integration', () => {
     };
 
     const resolver = new appy.ConfigResolver();
-    const result = resolver.resolveConfig({
+    const result = resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.EnvLoader(), new appy.CmdArgsLoader()], {
       key1: { default: 'def1', env: 'APPY_INT_TEST1', cmdArg: 'opt1' },
       key2: { default: 'def2', env: 'APPY_INT_TEST2', cmdArg: 'nonexistent' }
-    }, [new appy.DefaultValueLoader(), new appy.EnvLoader(), new appy.CmdArgsLoader()]);
+    });
 
     assert.equal(result.key1, 'from_env');
     assert.equal(result.key2, 'def2');
@@ -97,12 +97,12 @@ describe('Integration', () => {
   it('overlay: two config trees merged via valueTree parameter', () => {
     const resolver = new appy.ConfigResolver();
     const first = resolver.resolveConfig(
-      { key1: { default: 'val1' } },
-      new appy.DefaultValueLoader()
+      new appy.DefaultValueLoader(),
+      { key1: { default: 'val1' } }
     );
     const second = resolver.resolveConfig(
-      { key2: { default: 'val2' } },
       new appy.DefaultValueLoader(),
+      { key2: { default: 'val2' } },
       first
     );
     assert.deepEqual(second, { key1: 'val1', key2: 'val2' });
@@ -111,7 +111,7 @@ describe('Integration', () => {
   it('deep nesting: 3+ levels through multiple loaders', () => {
     process.env.APPY_INT_TEST1 = 'deep_env';
     const resolver = new appy.ConfigResolver();
-    const result = resolver.resolveConfig({
+    const result = resolver.resolveConfig([new appy.DefaultValueLoader(), new appy.EnvLoader()], {
       l1: {
         l2: {
           l3: {
@@ -120,7 +120,7 @@ describe('Integration', () => {
           }
         }
       }
-    }, [new appy.DefaultValueLoader(), new appy.EnvLoader()]);
+    });
     assert.equal(result.l1.l2.l3, 'deep_env');
   });
 

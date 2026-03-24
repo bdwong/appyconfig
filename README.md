@@ -212,7 +212,7 @@ You can also lock from the start using the `locked` constructor option. In this 
 const resolver = new ConfigResolver({ keyCase: null, locked: true });
 const config = resolver.resolveConfig([
   new EnvLoader({ prefix: 'APP_', stripPrefix: true }),
-], { HOST: 'default', PORT: '3000' });
+], null, { HOST: 'default', PORT: '3000' });
 // Only HOST and PORT can be set — any other APP_* vars are ignored
 ```
 
@@ -376,12 +376,12 @@ For more control over how each configuration key is resolved, you can define a *
 ## Configuration Tree
 
 1. Create a configuration tree that declares your configuration sources and options.
-2. Call `resolveConfig(configTree)` to resolve the configuration.
+2. Call `resolveConfig(loaders, configTree)` to resolve the configuration. The loaders array is required when using a configuration tree.
 
 In `lib/config.js`:
 
 ```js
-const { resolveConfig } = require('appyconfig');
+const { resolveConfig, DefaultValueLoader, EnvLoader } = require('appyconfig');
 
 const config_tree = {
   "dbuser": {
@@ -393,7 +393,10 @@ const config_tree = {
   }
 }
 
-const config = resolveConfig(config_tree);
+const config = resolveConfig(
+  [new DefaultValueLoader, new EnvLoader],
+  config_tree
+);
 
 module.exports = config;
 ```
@@ -441,9 +444,7 @@ Pass an instance of `JsonLoader` alongside your other loaders.
 You do not need to add anything to the configuration tree for JSON files.
 
 ```js
-const config = resolveConfig(config_tree, [
-  new JsonLoader(filename)
-]);
+const config = resolveConfig([new JsonLoader(filename)], config_tree);
 ```
 
 ### YAML files
@@ -516,20 +517,19 @@ In the configuration tree, configuration options can be set to values of any typ
 
 ## Customizing the Configuration Resolution Order
 
-By default when running `resolveConfig()` with a configuration tree, appyconfig will use default config values (`DefaultValueLoader`) first, then override those values with environment variables (`EnvLoader`).
-This is equivalent to the following code:
+When using a configuration tree, you must specify which loaders to use. A common pattern is to use default config values (`DefaultValueLoader`) first, then override with environment variables (`EnvLoader`):
 
 ```js
-const config = resolveConfig(config_tree, [
+const config = resolveConfig([
   new DefaultValueLoader,
   new EnvLoader
-]);
+], config_tree);
 ```
 
-You can choose which loaders (data sources) to use with a configuration tree. The array of loaders becomes the second argument in the `resolveConfig()` call.  For example, to fill the configuration with null values:
+For example, to fill the configuration with null values:
 
 ```js
-const config = resolveConfig(config_tree, [new NullLoader])
+const config = resolveConfig([new NullLoader], config_tree);
 ```
 
 ## Dotenv with Configuration Tree
@@ -546,7 +546,7 @@ DB_PASSWORD="secret"
 In `lib/config.js`:
 
 ```js
-const config = resolveConfig(config_tree, [new DotenvLoader("/approot/.env.production")]);
+const config = resolveConfig([new DotenvLoader("/approot/.env.production")], config_tree);
 ```
 
 And in the config tree within `lib/config.js`:
@@ -600,11 +600,11 @@ const config_tree = {
 };
 
 const resolver = new ConfigResolver();
-const config = resolver.resolveConfig(config_tree, [
+const config = resolver.resolveConfig([
   new DefaultValueLoader,
   new EnvLoader,
   new CmdArgsLoader
-]);
+], config_tree);
 
 module.exports = { config, resolver };
 ```
@@ -654,7 +654,7 @@ node app.js --my-setting updated
 
 ## Overlay Additional Configuration
 
-You can merge additional data sources into an existing configuration by passing a `valueTree` as the second argument to `resolveConfig()`. The new loader's values are merged on top of the existing object.
+You can merge additional data sources into an existing configuration by passing a `valueTree` as the third argument to `resolveConfig()`. Pass `null` for the config tree when overlaying in treeless mode.
 
 ```js
 const { resolveConfig, YamlLoader } = require('appyconfig');
@@ -664,5 +664,5 @@ const config = resolveConfig();
 
 // Later, overlay a user-supplied YAML file onto the existing config
 const userConfigFile = process.argv[2];
-const updatedConfig = resolveConfig(new YamlLoader(userConfigFile), config);
+const updatedConfig = resolveConfig(new YamlLoader(userConfigFile), null, config);
 ```

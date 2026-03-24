@@ -22,14 +22,15 @@ describe('No configTree usage', () => {
       }
     });
 
-    it('configTree with no loaders: uses original default mapping', () => {
+    it('configTree with explicit loaders', () => {
       const saved = process.env.TEST_ORIG_DEFAULT;
       process.env.TEST_ORIG_DEFAULT = 'env_val';
       try {
         const resolver = new appy.ConfigResolver();
-        const result = resolver.resolveConfig({
-          key: { default: 'def', env: 'TEST_ORIG_DEFAULT' }
-        });
+        const result = resolver.resolveConfig(
+          [new appy.DefaultValueLoader(), new appy.EnvLoader()],
+          { key: { default: 'def', env: 'TEST_ORIG_DEFAULT' } }
+        );
         assert.equal(result.key, 'env_val');
       } finally {
         if (saved === undefined) delete process.env.TEST_ORIG_DEFAULT;
@@ -51,10 +52,10 @@ describe('No configTree usage', () => {
       assert.equal(resolver.configTree, null);
     });
 
-    it('plain object arg: treats as configTree (backward compat)', () => {
+    it('loaders + configTree: configTree is second arg', () => {
       const resolver = new appy.ConfigResolver();
       const tree = { key: { default: 'val' } };
-      const result = resolver.resolveConfig(tree, new appy.DefaultValueLoader());
+      const result = resolver.resolveConfig(new appy.DefaultValueLoader(), tree);
       assert.equal(result.key, 'val');
       assert.equal(resolver.configTree, tree);
     });
@@ -68,7 +69,7 @@ describe('No configTree usage', () => {
 
     it('loaders + valueTree: no configTree with initial values', () => {
       const resolver = new appy.ConfigResolver({ keyCase: null });
-      const result = resolver.resolveConfig([new appy.NullLoader()], { existing: 'value' });
+      const result = resolver.resolveConfig([new appy.NullLoader()], null, { existing: 'value' });
       assert.deepEqual(result, { existing: 'value' });
     });
   });
@@ -247,8 +248,8 @@ describe('No configTree usage', () => {
     it('keyCase is NOT applied when configTree is provided', () => {
       const resolver = new appy.ConfigResolver();
       const result = resolver.resolveConfig(
-        { my_key: { default: 'val' } },
-        new appy.DefaultValueLoader()
+        new appy.DefaultValueLoader(),
+        { my_key: { default: 'val' } }
       );
       assert.equal(result.my_key, 'val');
       assert.equal(result.myKey, undefined);
@@ -386,17 +387,25 @@ describe('No configTree usage', () => {
       assert.equal(result.plainVar, undefined);
     });
 
-    it('resolveConfig({}) still treated as configTree (regression)', () => {
+    it('resolveConfig([], {}) treats empty object as configTree', () => {
       const resolver = new appy.ConfigResolver();
-      const result = resolver.resolveConfig({});
+      const result = resolver.resolveConfig([], {});
       assert.deepEqual(result, {});
     });
 
-    it('resolveConfig({ key: { default: "val" } }) still works as configTree (regression)', () => {
+    it('resolveConfig throws for unrecognized first arg', () => {
+      const resolver = new appy.ConfigResolver();
+      assert.throws(
+        () => resolver.resolveConfig({}),
+        /First argument must be a loader, array of loaders, or options hash/
+      );
+    });
+
+    it('resolveConfig with loaders + configTree works', () => {
       const resolver = new appy.ConfigResolver();
       const result = resolver.resolveConfig(
-        { key: { default: 'val' } },
-        new appy.DefaultValueLoader()
+        new appy.DefaultValueLoader(),
+        { key: { default: 'val' } }
       );
       assert.equal(result.key, 'val');
     });

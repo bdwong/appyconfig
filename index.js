@@ -488,7 +488,6 @@ class ArgvLoader extends ValueLoader {
   }
 }
 
-const DEFAULT_MAPPING = [new DefaultValueLoader(), new EnvLoader()];
 const DEFAULT_TREELESS_MAPPING = [
   new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
   new DotenvLoader('.env', { allowMissing: true }),
@@ -515,9 +514,11 @@ class ConfigResolver {
    *    presents them as a single hash.
    *
    * Supports multiple calling conventions:
-   *   resolveConfig(configTree, resolveMaps, valueTree) — original
-   *   resolveConfig(resolveMaps, valueTree)             — no configTree
-   *   resolveConfig(resolveMaps)                        — no configTree, default valueTree
+   *   resolveConfig(resolveMaps, configTree, valueTree) — loaders + configTree + overlay
+   *   resolveConfig(resolveMaps, configTree)            — loaders + configTree
+   *   resolveConfig(resolveMaps, null, valueTree)       — loaders + overlay (no configTree)
+   *   resolveConfig(resolveMaps)                        — loaders only (no configTree)
+   *   resolveConfig(options)                            — options hash (no configTree)
    *   resolveConfig()                                   — no configTree, default mapping
    */
   resolveConfig(...args) {
@@ -532,25 +533,19 @@ class ConfigResolver {
       // First arg is options hash — no configTree, no loaders
       options = args[0];
     } else if (this._isResolveMaps(args[0])) {
-      // First arg is loaders — no configTree
+      // First arg is loaders
       resolveMaps = args[0];
-      if (args[1] !== undefined) valueTree = args[1];
-    } else {
-      // First arg is configTree (plain object) — original behavior
-      configTree = args[0];
-      if (args[1] !== undefined) resolveMaps = args[1];
+      if (args[1] != null) configTree = args[1];
       if (args[2] !== undefined) valueTree = args[2];
+    } else {
+      throw new Error('First argument must be a loader, array of loaders, or options hash');
     }
 
     // Pick the appropriate default if no loaders were specified.
     if (resolveMaps === null) {
-      if (configTree === null) {
-        resolveMaps = Object.keys(options).length > 0
-          ? this._buildDefaultTreelessMapping(options)
-          : DEFAULT_TREELESS_MAPPING;
-      } else {
-        resolveMaps = DEFAULT_MAPPING;
-      }
+      resolveMaps = Object.keys(options).length > 0
+        ? this._buildDefaultTreelessMapping(options)
+        : DEFAULT_TREELESS_MAPPING;
     }
 
     if (!Array.isArray(resolveMaps)) {

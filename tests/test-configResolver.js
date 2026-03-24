@@ -12,29 +12,29 @@ describe('ConfigResolver', () => {
 
   describe('resolveConfig', () => {
     it('returns empty object for empty config tree', () => {
-      const result = resolver.resolveConfig({});
+      const result = resolver.resolveConfig([], {});
       assert.deepEqual(result, {});
     });
 
     it('accepts a single loader (not array)', () => {
       const result = resolver.resolveConfig(
-        { key: { default: 'val' } },
-        new appy.DefaultValueLoader()
+        new appy.DefaultValueLoader(),
+        { key: { default: 'val' } }
       );
       assert.deepEqual(result, { key: 'val' });
     });
 
     it('accepts an array of loaders', () => {
       const result = resolver.resolveConfig(
-        { key: { default: 'val' } },
-        [new appy.DefaultValueLoader()]
+        [new appy.DefaultValueLoader()],
+        { key: { default: 'val' } }
       );
       assert.deepEqual(result, { key: 'val' });
     });
 
     it('throws when loader is not a ValueLoader instance', () => {
       assert.throws(
-        () => resolver.resolveConfig({ key: { default: 'val' } }, [{}]),
+        () => resolver.resolveConfig([new appy.DefaultValueLoader(), {}], { key: { default: 'val' } }),
         /Mapping is not a ValueLoader instance/
       );
     });
@@ -44,8 +44,8 @@ describe('ConfigResolver', () => {
       process.env.APPY_RESOLVER_TEST = 'from_env';
       try {
         const result = resolver.resolveConfig(
-          { key: { default: 'from_default', env: 'APPY_RESOLVER_TEST' } },
-          [new appy.DefaultValueLoader(), new appy.EnvLoader()]
+          [new appy.DefaultValueLoader(), new appy.EnvLoader()],
+          { key: { default: 'from_default', env: 'APPY_RESOLVER_TEST' } }
         );
         assert.equal(result.key, 'from_env');
       } finally {
@@ -54,13 +54,14 @@ describe('ConfigResolver', () => {
       }
     });
 
-    it('uses default mapping when omitted', () => {
+    it('requires explicit loaders with configTree', () => {
       const savedEnv = process.env.APPY_RESOLVER_DEFAULT;
       delete process.env.APPY_RESOLVER_DEFAULT;
       try {
-        const result = resolver.resolveConfig({
-          key: { default: 'def_val', env: 'APPY_RESOLVER_DEFAULT' }
-        });
+        const result = resolver.resolveConfig(
+          [new appy.DefaultValueLoader(), new appy.EnvLoader()],
+          { key: { default: 'def_val', env: 'APPY_RESOLVER_DEFAULT' } }
+        );
         assert.equal(result.key, 'def_val');
       } finally {
         if (savedEnv !== undefined) process.env.APPY_RESOLVER_DEFAULT = savedEnv;
@@ -69,18 +70,18 @@ describe('ConfigResolver', () => {
 
     it('stores configTree on instance', () => {
       const tree = { key: { default: 'val' } };
-      resolver.resolveConfig(tree, new appy.DefaultValueLoader());
+      resolver.resolveConfig(new appy.DefaultValueLoader(), tree);
       assert.equal(resolver.configTree, tree);
     });
 
     it('stores valueTree on instance', () => {
-      resolver.resolveConfig({ key: { default: 'val' } }, new appy.DefaultValueLoader());
+      resolver.resolveConfig(new appy.DefaultValueLoader(), { key: { default: 'val' } });
       assert.deepEqual(resolver.valueTree, { key: 'val' });
     });
 
     it('stores resolveMaps on instance', () => {
       const loaders = [new appy.DefaultValueLoader()];
-      resolver.resolveConfig({ key: { default: 'val' } }, loaders);
+      resolver.resolveConfig(loaders, { key: { default: 'val' } });
       assert.equal(resolver.resolveMaps, loaders);
     });
   });
@@ -120,8 +121,8 @@ describe('ConfigResolver', () => {
 
     it('registers a preAction hook', () => {
       const r = new appy.ConfigResolver();
-      r.resolveConfig({ key: { default: 'v', cmdArg: 'opt1' } },
-        [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]);
+      r.resolveConfig([new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+        { key: { default: 'v', cmdArg: 'opt1' } });
       const hookMock = { hook: mock.fn(() => {}) };
       r.resolveCommander(hookMock);
       assert.equal(hookMock.hook.mock.calls.length, 1);
@@ -147,7 +148,7 @@ describe('ConfigResolver', () => {
       const hookMock = {
         hook: mock.fn((_event, cb) => { callback = cb; })
       };
-      r.resolveConfig({ key: { default: 'v' } }, [new appy.DefaultValueLoader()]);
+      r.resolveConfig([new appy.DefaultValueLoader()], { key: { default: 'v' } });
       r.resolveCommander(hookMock);
       assert.throws(
         () => callback(hookMock, hookMock),
@@ -164,8 +165,8 @@ describe('ConfigResolver', () => {
         opts: (name) => cmdOpts[name]
       };
       r.resolveConfig(
-        { key1: { default: 'def', cmdArg: 'opt1' }, key2: { default: true, cmdArg: 'optFalse' } },
-        [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]
+        [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+        { key1: { default: 'def', cmdArg: 'opt1' }, key2: { default: true, cmdArg: 'optFalse' } }
       );
       r.resolveCommander(subcommandMock);
       callback(subcommandMock, subcommandMock);
@@ -182,8 +183,8 @@ describe('ConfigResolver', () => {
         opts: (_name) => cmdOpts
       };
       r.resolveConfig(
-        { key1: { default: 'def', cmdArg: 'opt1' }, key2: { default: true, cmdArg: 'optFalse' } },
-        [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()]
+        [new appy.DefaultValueLoader(), new appy.CmdArgsLoader()],
+        { key1: { default: 'def', cmdArg: 'opt1' }, key2: { default: true, cmdArg: 'optFalse' } }
       );
       r.resolveCommander(programMock);
       callback(programMock, programMock);
@@ -195,7 +196,7 @@ describe('ConfigResolver', () => {
   describe('global convenience functions', () => {
     it('resolveConfig is exported and callable', () => {
       assert.equal(typeof appy.resolveConfig, 'function');
-      const result = appy.resolveConfig({});
+      const result = appy.resolveConfig([], {});
       assert.deepEqual(result, {});
     });
 
