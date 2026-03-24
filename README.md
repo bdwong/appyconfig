@@ -1,6 +1,6 @@
 # appyconfig
 
-Read and unify application configuration data from different sources.
+Load and override configuration from multiple sources. Use it anywhere with ease. Supports JSON, JSONC, YAML, .env files, environment variables, CLI arguments, and Commander.
 
 # Install
 
@@ -10,11 +10,9 @@ npm install appyconfig
 
 # Usage
 
-Call `resolveConfig()` to gather configuration from different sources. With no arguments, it loads from `config.json` (if present), `.env` (if present), `APP_`-prefixed environment variables, and command line arguments. Keys are automatically converted to camelCase.
+Call `resolveConfig()` to load and consolidate configuration data in a dedicated module, and export the resulting configuration object. Then import the configuration object in other modules as needed. This is the recommended pattern.
 
 ## Basic Example
-
-The recommended pattern is to resolve your configuration once in a dedicated module and import it everywhere else. Because Node caches module exports, every file that imports the config module gets the same object — a single source of truth for your app's configuration.
 
 In `lib/config.js`:
 
@@ -26,29 +24,48 @@ const config = resolveConfig();
 module.exports = config;
 ```
 
-Then import it wherever you need it, e.g. in `app.js`:
+Import the `config` object wherever you need it, e.g. in `app.js`:
 
 ```js
 const config = require('./lib/config');
 
-console.log(config.databaseHost); // "localhost"
-console.log(config.databasePort); // "5432"
+// When retrieving configuration data, keys are automatically converted to camelCase.
+console.log(`config.databaseHost => ${config.databaseHost}`);
+console.log(`config.databasePort => ${config.databasePort}`);
 ```
 
 Running your app:
 
 ```sh
-APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
+node app.js --database-host myserver --database-port 1234
+# config.databaseHost => "myserver"
+# config.databasePort => "1234"
 ```
 
-Or you can use command line arguments to set the database host value:
+The above pattern works because Node caches module exports. Every file that imports the config module gets the same object — a single source of truth for your app's configuration.
+
+### Default Data Sources
+
+When `resolveConfig()` is called with no arguments, it loads configuration data from the following sources:
+
+- `config.json` (if present)
+- `.env` (if present)
+- `APP_`-prefixed environment variables
+- Command line arguments
+
+To use different configuration data sources, see **Changing Loaders** below.
+
+### Environment Variables
+
+Continuing the above example, you could use environment variables to set the database configuration:
 
 ```sh
-node app.js --database-host myserver
-# config.databaseHost => "myserver"
+APP_DATABASE_HOST=localhost APP_DATABASE_PORT=5432 node app.js
+# config.databaseHost => "localhost"
+# config.databasePort => "5432"
 ```
 
-To customize the environment variable prefix, pass an options hash:
+To customize the environment variable prefix, pass an options hash when resolving the configuration:
 
 ```js
 const config = resolveConfig({ prefix: 'MYAPP_' });
