@@ -1,6 +1,6 @@
 {
   "name": "appyconfig",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Read application configuration data from different sources in a unified way.",
   "main": "index.js",
   "files": [
