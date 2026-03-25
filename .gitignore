@@ -5,5 +5,8 @@ node_modules/
 *~
 *.bak
 
+# coverage
+coverage/
+
 # misc
 .DS_Store
