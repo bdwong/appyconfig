@@ -495,6 +495,33 @@ class ArgvLoader extends ValueLoader {
     return target;
   }
 
+  _collectArgvKeys(configBranch, valueTree, valueBranch, target) {
+    if (configBranch === null || typeof configBranch !== 'object' || Array.isArray(configBranch)) {
+      return target;
+    }
+
+    if (this.hasSubKeys(configBranch)) {
+      for (const key in configBranch) {
+        this._collectArgvKeys(configBranch[key], valueTree, valueBranch?.[key], target);
+      }
+    } else if (configBranch[this.mapKey] !== undefined) {
+      const argvKey = configBranch[this.mapKey];
+      target[argvKey] = valueBranch !== undefined ? valueBranch : null;
+    }
+
+    return target;
+  }
+
+  loadValues(configTree, valueTree) {
+    const syntheticTree = this._collectArgvKeys(configTree, valueTree, valueTree, {});
+    if (Object.keys(syntheticTree).length > 0) {
+      this._parse(syntheticTree, { checkLongOptions: true });
+    } else {
+      this._parse({});
+    }
+    return super.loadValues(configTree, valueTree);
+  }
+
   loadAllValues(valueTree) {
     this._parse(valueTree, { checkLongOptions: true });
     return this._deepMerge(valueTree, this.argv);

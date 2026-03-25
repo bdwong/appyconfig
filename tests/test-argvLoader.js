@@ -408,6 +408,86 @@ describe('ArgvLoader', () => {
         assert.equal(result, 'localhost');
       });
 
+      it('config-tree mode (loadValues) flags unrecognized long options', () => {
+        process.argv = ['node', 'script.js', '--unknown', 'val', '--host', 'localhost'];
+        const received = [];
+        const loader = new ArgvLoader({ onUnrecognized: (arg) => received.push(arg) });
+        const configTree = {
+          host: { default: 'default-host', argv: 'host' },
+        };
+        loader.loadValues(configTree, {});
+        assert.deepEqual(received, ['--unknown']);
+      });
+
+      it('config-tree mode (loadValues) allows recognized argv keys', () => {
+        process.argv = ['node', 'script.js', '--host', 'localhost', '--port', '5432'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const configTree = {
+          host: { default: 'default-host', argv: 'host' },
+          port: { default: '3000', argv: 'port' },
+        };
+        const result = loader.loadValues(configTree, {});
+        assert.equal(result.host, 'localhost');
+        assert.equal(result.port, '5432');
+      });
+
+      it('config-tree mode (loadValues) unrecognized args remain in process.argv', () => {
+        process.argv = ['node', 'script.js', '--unknown', 'val', '--host', 'localhost'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.IGNORE });
+        const configTree = {
+          host: { default: 'default-host', argv: 'host' },
+        };
+        loader.loadValues(configTree, {});
+        assert.ok(process.argv.includes('--unknown'));
+        assert.ok(process.argv.includes('val'));
+      });
+
+      it('config-tree mode (loadValues) boolean flags work with type info from valueTree', () => {
+        process.argv = ['node', 'script.js', '--verbose', 'not-consumed'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const configTree = {
+          verbose: { default: false, argv: 'verbose' },
+        };
+        const result = loader.loadValues(configTree, { verbose: false });
+        assert.equal(result.verbose, true);
+        assert.ok(process.argv.includes('not-consumed'));
+      });
+
+      it('config-tree mode (loadValues) --no-X negation works with type info', () => {
+        process.argv = ['node', 'script.js', '--no-debug'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const configTree = {
+          debug: { default: true, argv: 'debug' },
+        };
+        const result = loader.loadValues(configTree, { debug: true });
+        assert.equal(result.debug, false);
+      });
+
+      it('config-tree mode (loadValues) handles nested config trees', () => {
+        process.argv = ['node', 'script.js', '--db-host', 'localhost', '--db-port', '5432'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const configTree = {
+          database: {
+            host: { default: 'default-host', argv: 'db-host' },
+            port: { default: '3000', argv: 'db-port' },
+          },
+        };
+        const result = loader.loadValues(configTree, {});
+        assert.equal(result.database.host, 'localhost');
+        assert.equal(result.database.port, '5432');
+      });
+
+      it('config-tree mode does not validate when valueTree has no argv keys', () => {
+        process.argv = ['node', 'script.js', '--anything', 'val'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const configTree = {
+          host: { default: 'default-host' },
+        };
+        const result = loader.loadValues(configTree, {});
+        // No argv keys in config tree, so no validation
+        assert.equal(result.host, undefined);
+      });
+
       it('leaves unrecognized args in process.argv', () => {
         process.argv = ['node', 'script.js', '-x', '--unknown', 'val', '--host', 'localhost'];
         const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.IGNORE });
