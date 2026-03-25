@@ -1,6 +1,6 @@
 const { describe, it, beforeEach, afterEach, mock } = require('test');
 const assert = require('node:assert/strict');
-const { ArgvLoader } = require('../index');
+const { ArgvLoader, UnrecognizedArgumentError } = require('../index');
 
 describe('ArgvLoader', () => {
   let savedArgv;
@@ -153,19 +153,19 @@ describe('ArgvLoader', () => {
       assert.equal(result.verbose, true);
     });
 
-    it('warns on unrecognized short option', () => {
+    it('exits on unrecognized short option by default', () => {
       process.argv = ['node', 'script.js', '-x', '--host', 'localhost'];
-      const warnMock = mock.method(console, 'warn', () => {});
+      const exitMock = mock.method(process, 'exit', () => {});
+      const stderrMock = mock.method(process.stderr, 'write', () => {});
       try {
         const loader = new ArgvLoader();
-        const result = loader.loadAllValues({});
-        assert.equal(warnMock.mock.callCount() > 0, true);
-        assert.ok(warnMock.mock.calls[0].arguments[0].includes('-x'));
-        // -x should remain in process.argv
-        assert.ok(process.argv.includes('-x'));
-        assert.equal(result.host, 'localhost');
+        loader.loadAllValues({ host: 'default' });
+        assert.equal(exitMock.mock.callCount(), 1);
+        assert.equal(exitMock.mock.calls[0].arguments[0], 1);
+        assert.ok(stderrMock.mock.calls[0].arguments[0].includes('-x'));
       } finally {
-        warnMock.mock.restore();
+        exitMock.mock.restore();
+        stderrMock.mock.restore();
       }
     });
   });
@@ -274,6 +274,148 @@ describe('ArgvLoader', () => {
       process.argv = ['node', 'script.js', '--host', 'changed'];
       const result = loader.loadAllValues({});
       assert.equal(result.host, 'localhost');
+    });
+  });
+
+  describe('unrecognized option handling', () => {
+    describe('constructor', () => {
+      it('defaults onUnrecognized to ArgvLoader.EXIT', () => {
+        const loader = new ArgvLoader();
+        assert.equal(loader.onUnrecognized, ArgvLoader.EXIT);
+      });
+
+      it('accepts a custom callback', () => {
+        const cb = () => {};
+        const loader = new ArgvLoader({ onUnrecognized: cb });
+        assert.equal(loader.onUnrecognized, cb);
+      });
+    });
+
+    describe('static callbacks', () => {
+      it('ArgvLoader.THROW throws UnrecognizedArgumentError', () => {
+        process.argv = ['node', 'script.js', '-x'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        assert.throws(
+          () => loader.loadAllValues({}),
+          (err) => {
+            assert.ok(err instanceof UnrecognizedArgumentError);
+            assert.equal(err.arg, '-x');
+            return true;
+          }
+        );
+      });
+
+      it('ArgvLoader.IGNORE silently skips unrecognized args', () => {
+        process.argv = ['node', 'script.js', '-x', '--host', 'localhost'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.IGNORE });
+        const result = loader.loadAllValues({ host: 'default' });
+        assert.equal(result.host, 'localhost');
+      });
+
+      it('ArgvLoader.EXIT writes to stderr and exits', () => {
+        process.argv = ['node', 'script.js', '--unknown'];
+        const exitMock = mock.method(process, 'exit', () => {});
+        const stderrMock = mock.method(process.stderr, 'write', () => {});
+        try {
+          const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.EXIT });
+          loader.loadAllValues({ host: 'default' });
+          assert.equal(exitMock.mock.callCount(), 1);
+          assert.equal(exitMock.mock.calls[0].arguments[0], 1);
+          assert.ok(stderrMock.mock.calls[0].arguments[0].includes('--unknown'));
+        } finally {
+          exitMock.mock.restore();
+          stderrMock.mock.restore();
+        }
+      });
+    });
+
+    describe('callback receives the argument', () => {
+      it('passes unrecognized short option to callback', () => {
+        process.argv = ['node', 'script.js', '-x'];
+        const received = [];
+        const loader = new ArgvLoader({ onUnrecognized: (arg) => received.push(arg) });
+        loader.loadAllValues({});
+        assert.deepEqual(received, ['-x']);
+      });
+
+      it('passes unrecognized long option to callback', () => {
+        process.argv = ['node', 'script.js', '--unknown', 'val'];
+        const received = [];
+        const loader = new ArgvLoader({ onUnrecognized: (arg) => received.push(arg) });
+        loader.loadAllValues({ host: 'default' });
+        assert.deepEqual(received, ['--unknown']);
+      });
+
+      it('calls callback for --unknown=value form', () => {
+        process.argv = ['node', 'script.js', '--unknown=val'];
+        const received = [];
+        const loader = new ArgvLoader({ onUnrecognized: (arg) => received.push(arg) });
+        loader.loadAllValues({ host: 'default' });
+        assert.deepEqual(received, ['--unknown=val']);
+      });
+
+      it('calls callback for --no-unknown when unknown is not a boolean key', () => {
+        process.argv = ['node', 'script.js', '--no-unknown'];
+        const received = [];
+        const loader = new ArgvLoader({ onUnrecognized: (arg) => received.push(arg) });
+        loader.loadAllValues({ host: 'default' });
+        assert.deepEqual(received, ['--no-unknown']);
+      });
+
+      it('does not call callback for --no-X when X is a boolean key', () => {
+        process.argv = ['node', 'script.js', '--no-debug'];
+        const received = [];
+        const loader = new ArgvLoader({ onUnrecognized: (arg) => received.push(arg) });
+        const result = loader.loadAllValues({ debug: true });
+        assert.equal(result.debug, false);
+        assert.deepEqual(received, []);
+      });
+    });
+
+    describe('edge cases', () => {
+      it('args after -- sentinel are never flagged', () => {
+        process.argv = ['node', 'script.js', '--host', 'localhost', '--', '--unknown'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const result = loader.loadAllValues({ host: 'default' });
+        assert.equal(result.host, 'localhost');
+      });
+
+      it('positional args are never flagged', () => {
+        process.argv = ['node', 'script.js', 'positional', '--host', 'localhost'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const result = loader.loadAllValues({ host: 'default' });
+        assert.equal(result.host, 'localhost');
+      });
+
+      it('empty argv does not trigger callback', () => {
+        process.argv = ['node', 'script.js'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const result = loader.loadAllValues({ host: 'default' });
+        assert.equal(result.host, 'default');
+      });
+
+      it('does not check long options when valueTree is empty', () => {
+        process.argv = ['node', 'script.js', '--anything', 'val'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const result = loader.loadAllValues({});
+        assert.equal(result.anything, 'val');
+      });
+
+      it('config-tree mode (mapValue) does not flag unrecognized long options', () => {
+        process.argv = ['node', 'script.js', '--unknown', 'val', '--host', 'localhost'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.THROW });
+        const result = loader.mapValue('host', 'default');
+        assert.equal(result, 'localhost');
+      });
+
+      it('leaves unrecognized args in process.argv', () => {
+        process.argv = ['node', 'script.js', '-x', '--unknown', 'val', '--host', 'localhost'];
+        const loader = new ArgvLoader({ onUnrecognized: ArgvLoader.IGNORE });
+        loader.loadAllValues({ host: 'default' });
+        assert.ok(process.argv.includes('-x'));
+        assert.ok(process.argv.includes('--unknown'));
+        assert.ok(process.argv.includes('val'));
+      });
     });
   });
 });

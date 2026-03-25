@@ -20,6 +20,14 @@ const UNLOCK = new Object();
 
 class NotImplementedError extends Error {}
 
+class UnrecognizedArgumentError extends Error {
+  constructor(arg) {
+    super(`Unrecognized argument: ${arg}`);
+    this.name = 'UnrecognizedArgumentError';
+    this.arg = arg;
+  }
+}
+
 function setNestedValue(obj, keys, value, originalKey) {
   if (keys.some(k => k === '')) {
     console.warn(`appyconfig: skipping key "${originalKey}" — nested expansion produced an empty key segment`);
@@ -315,6 +323,7 @@ class ArgvLoader extends ValueLoader {
     super();
     this.mapKey = 'argv';
     this.aliases = options.aliases || {};
+    this.onUnrecognized = options.onUnrecognized || ArgvLoader.EXIT;
     this.parsed = false;
     this.argv = {};
   }
@@ -328,12 +337,13 @@ class ArgvLoader extends ValueLoader {
     return current;
   }
 
-  _parse(valueTree) {
+  _parse(valueTree, { checkLongOptions = false } = {}) {
     if (this.parsed) return;
     this.parsed = true;
 
     const args = process.argv;
     const consumedIndices = new Set();
+    const hasValueTreeKeys = checkLongOptions && Object.keys(valueTree).length > 0;
     let i = 2;
 
     while (i < args.length) {
@@ -378,7 +388,7 @@ class ArgvLoader extends ValueLoader {
           }
           continue;
         } else {
-          console.warn(`appyconfig: unrecognized short option "${arg}" — ignoring`);
+          this.onUnrecognized(arg);
           i++;
           continue;
         }
@@ -386,7 +396,6 @@ class ArgvLoader extends ValueLoader {
 
       // Long-form option
       if (arg.startsWith('--')) {
-        consumedIndices.add(i);
         let optName, inlineValue;
 
         const eqIndex = arg.indexOf('=');
@@ -413,7 +422,24 @@ class ArgvLoader extends ValueLoader {
           }
         }
 
+        // Check if this long option is recognized
         const pathSegments = resolvedName.split('--');
+        if (hasValueTreeKeys) {
+          const existingInTree = pathSegments.length > 1
+            ? this._getNestedValue(valueTree, pathSegments)
+            : valueTree[resolvedName];
+          if (existingInTree === undefined) {
+            this.onUnrecognized(arg);
+            // Skip value if present (don't consume)
+            if (inlineValue === undefined && i + 1 < args.length && !args[i + 1].startsWith('-')) {
+              i++;
+            }
+            i++;
+            continue;
+          }
+        }
+
+        consumedIndices.add(i);
         let value;
 
         if (inlineValue !== undefined) {
@@ -470,7 +496,7 @@ class ArgvLoader extends ValueLoader {
   }
 
   loadAllValues(valueTree) {
-    this._parse(valueTree);
+    this._parse(valueTree, { checkLongOptions: true });
     return this._deepMerge(valueTree, this.argv);
   }
 
@@ -487,6 +513,13 @@ class ArgvLoader extends ValueLoader {
     return value;
   }
 }
+
+ArgvLoader.EXIT = (arg) => {
+  process.stderr.write(`Error: unrecognized argument: ${arg}\n`);
+  process.exit(1);
+};
+ArgvLoader.THROW = (arg) => { throw new UnrecognizedArgumentError(arg); };
+ArgvLoader.IGNORE = () => {};
 
 const DEFAULT_TREELESS_MAPPING = [
   new JsonLoader(path.join(appRootPath.toString(), 'config.json'), { allowMissing: true }),
@@ -670,7 +703,7 @@ module.exports = {
   ConfigResolver,
   resolveConfig: g_configResolver.resolveConfig.bind(g_configResolver),
   resolveCommander: g_configResolver.resolveCommander.bind(g_configResolver),
-  DefaultValueLoader, CmdArgsLoader, EnvLoader, ArgvLoader, NullLoader,
+  DefaultValueLoader, CmdArgsLoader, EnvLoader, ArgvLoader, NullLoader, UnrecognizedArgumentError,
   JsonLoader, DotenvLoader, YamlLoader, TomlLoader,
   LOCK, UNLOCK,
   stringType, booleanType, intType,

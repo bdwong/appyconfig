@@ -110,7 +110,7 @@ Here is a list of valid loaders:
 | YAML file | YamlLoader | |
 | TOML file | TomlLoader | |
 | .env file | DotenvLoader | Options: `{ prefix, stripPrefix, expand, allowMissing, suppressExceptions }` |
-| CLI arguments (built-in) | ArgvLoader | Options: `{ aliases }`. See ArgvLoader section below |
+| CLI arguments (built-in) | ArgvLoader | Options: `{ aliases, onUnrecognized }`. See ArgvLoader section below |
 | CLI arguments (Commander) | CmdArgsLoader | See Commander section below |
 
 ### Default Loaders
@@ -294,7 +294,29 @@ node app.js -o out.txt -v
 # config.outputFile => "out.txt", config.verbose => true
 ```
 
-Unrecognized short options (not in aliases) emit a warning and are left in `process.argv`.
+### Unrecognized Arguments
+
+By default, ArgvLoader prints an error to stderr and exits when it encounters arguments that don't match the value tree (long options) or the aliases map (short options). Control this with the `onUnrecognized` callback:
+
+```js
+const { ArgvLoader } = require('appyconfig');
+
+// Default: print to stderr and exit with code 1
+new ArgvLoader()  // equivalent to { onUnrecognized: ArgvLoader.EXIT }
+
+// Throw an exception for programmatic handling
+new ArgvLoader({ onUnrecognized: ArgvLoader.THROW })
+
+// Silently ignore (useful when downstream tools process remaining args)
+new ArgvLoader({ onUnrecognized: ArgvLoader.IGNORE })
+
+// Custom callback
+new ArgvLoader({ onUnrecognized: (arg) => console.warn(`Skipping ${arg}`) })
+```
+
+Unrecognized arguments are left in `process.argv` (not consumed).
+
+Long-option recognition requires a populated value tree from prior loaders. When the value tree is empty (no prior loaders), long options are accepted without checking.
 
 ### End-of-Options
 
