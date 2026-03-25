@@ -306,6 +306,7 @@ new ArgvLoader()  // equivalent to { onUnrecognized: ArgvLoader.EXIT }
 
 // Throw an exception for programmatic handling
 new ArgvLoader({ onUnrecognized: ArgvLoader.THROW })
+// Catch with: const { UnrecognizedArgumentError } = require('appyconfig')
 
 // Silently ignore (useful when downstream tools process remaining args)
 new ArgvLoader({ onUnrecognized: ArgvLoader.IGNORE })
@@ -389,7 +390,7 @@ APP_DATABASE__NAME=myapp_prod APP_PORT=8080 node app.js
 node app.js --port 8080 --database--host db.example.com -v
 ```
 
-Because the tree is locked after `JsonLoader`, only keys defined in `defaults.json` can be set — stray environment variables or typos in CLI arguments are silently ignored.
+Because the tree is locked after `JsonLoader`, only keys defined in `defaults.json` can be set — stray environment variables are silently ignored, and typos in CLI arguments trigger an error exit by default (see `onUnrecognized` above).
 
 # Advanced Usage
 
