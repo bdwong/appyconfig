@@ -66,4 +66,19 @@ describe('JsonLoader', () => {
     const result = loader.loadValues({}, {});
     assert.deepEqual(result, {});
   });
+
+  it('throws by default on malformed JSON', () => {
+    const loader = new JsonLoader(malformedFile);
+    assert.throws(() => loader.loadValues({}, {}));
+  });
+
+  it('suppresses exception on malformed JSON with suppressExceptions flag', () => {
+    const loader = new JsonLoader(malformedFile, true);
+    assert.doesNotThrow(() => loader.loadValues({}, {}));
+  });
+
+  it('throws on malformed JSON with only allowMissing', () => {
+    const loader = new JsonLoader(malformedFile, { allowMissing: true });
+    assert.throws(() => loader.loadValues({}, {}));
+  });
 });

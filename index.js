@@ -1,6 +1,6 @@
 const { readFileSync } = require('fs');
 const path = require('path');
-const { parse: parseJsonc } = require('jsonc-parser');
+const { parse: parseJsonc } = require('comment-json');
 const dotenv = require('dotenv');
 const { ValueLoader, copyKeyedMappingAssignmentStrategy } = require('./lib/valueLoader.js');
 const { FileLoader } = require('./lib/fileLoader.js');
